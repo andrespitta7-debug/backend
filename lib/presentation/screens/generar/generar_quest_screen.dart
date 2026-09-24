@@ -47,6 +47,7 @@ class _GenerarQuestScreenState extends State<GenerarQuestScreen> {
           builder: (_) => CombateScreen(
             idQuest: quest.quest.idQuest,
             idUsuario: widget.idUsuario,
+            categoriaQuest: quest.quest.categoria,
           ),
         ),
       );
