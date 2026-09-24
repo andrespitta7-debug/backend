@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+
 import '../../../domain/entities/usuario.dart';
 import '../../../domain/usecases/auth_usecases.dart';
 
@@ -34,7 +35,9 @@ class AuthController extends ChangeNotifier {
       );
       return true;
     } catch (e) {
-      error = e is RegistroInvalidoException ? e.mensaje : 'Error al registrar.';
+      error = e is RegistroInvalidoException
+          ? e.mensaje
+          : 'Error al registrar.';
       return false;
     } finally {
       cargando = false;
@@ -42,12 +45,20 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<bool> iniciarSesion(String email, String password) async {
+  Future<bool> iniciarSesion(
+    String email,
+    String password, {
+    bool mantenerSesion = true,
+  }) async {
     cargando = true;
     error = null;
     notifyListeners();
     try {
-      usuarioActual = await _iniciarSesionUseCase.ejecutar(email, password);
+      usuarioActual = await _iniciarSesionUseCase.ejecutar(
+        email,
+        password,
+        mantenerSesion: mantenerSesion,
+      );
       return true;
     } catch (_) {
       error = 'Correo o contraseña incorrectos.';

@@ -1,5 +1,6 @@
 import '../entities/usuario.dart';
 import '../repositories/auth_repository.dart';
+import '../repositories/sesion_repository.dart';
 import 'password_hasher.dart';
 
 class RegistroInvalidoException implements Exception {
@@ -7,11 +8,15 @@ class RegistroInvalidoException implements Exception {
   RegistroInvalidoException(this.mensaje);
 }
 
-class CredencialesInvalidasException implements Exception {}
+class CredencialesInvalidasException implements Exception {
+  final String mensaje = 'Correo o contraseña incorrectos';
+}
 
 class RegistrarUsuarioUseCase {
   final AuthRepository _repo;
-  RegistrarUsuarioUseCase(this._repo);
+  final SesionRepository? _sesionRepo;
+
+  RegistrarUsuarioUseCase(this._repo, [this._sesionRepo]);
 
   Future<Usuario> ejecutar({
     required String email,
@@ -20,34 +25,106 @@ class RegistrarUsuarioUseCase {
     required String apellido,
     required String passwordPlano,
   }) async {
-    if (email.isEmpty || !email.contains('@')) {
-      throw RegistroInvalidoException('Correo inválido.');
+    final emailNormalizado = email.trim().toLowerCase();
+    final nombreNormalizado = nombre.trim();
+    final apellidoNormalizado = apellido.trim();
+    final nombreUsuarioNormalizado = nombreUsuario.trim();
+
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(emailNormalizado)) {
+      throw RegistroInvalidoException('El correo electrónico no es válido.');
     }
-    if (passwordPlano.length < 6) {
-      throw RegistroInvalidoException('La contraseña debe tener al menos 6 caracteres.');
+    if (nombreNormalizado.length < 2 || nombreNormalizado.length > 50) {
+      throw RegistroInvalidoException(
+        'El nombre es obligatorio y debe tener entre 2 y 50 caracteres.',
+      );
     }
-    final yaExiste = await _repo.existeEmailORusuario(email, nombreUsuario);
-    if (yaExiste) {
-      throw RegistroInvalidoException('Ese correo o nombre de usuario ya está registrado.');
+    if (apellidoNormalizado.length < 2 || apellidoNormalizado.length > 50) {
+      throw RegistroInvalidoException(
+        'El apellido es obligatorio y debe tener entre 2 y 50 caracteres.',
+      );
+    }
+    if (nombreUsuarioNormalizado.length < 3 ||
+        nombreUsuarioNormalizado.length > 20 ||
+        !RegExp(r'^[A-Za-z0-9_]+$').hasMatch(nombreUsuarioNormalizado)) {
+      throw RegistroInvalidoException(
+        'El nombre de usuario debe tener entre 3 y 20 caracteres y solo puede contener letras, números y guion bajo.',
+      );
+    }
+    if (passwordPlano.length < 8 ||
+        !RegExp(r'[A-Za-z]').hasMatch(passwordPlano) ||
+        !RegExp(r'[0-9]').hasMatch(passwordPlano)) {
+      throw RegistroInvalidoException(
+        'La contraseña debe tener al menos 8 caracteres, una letra y un número.',
+      );
     }
 
-    return _repo.registrar(
-      email: email,
-      nombreUsuario: nombreUsuario,
-      nombre: nombre,
-      apellido: apellido,
+    if (await _repo.existeEmail(emailNormalizado)) {
+      throw RegistroInvalidoException('El correo ya está registrado.');
+    }
+    if (await _repo.existeNombreUsuario(nombreUsuarioNormalizado)) {
+      throw RegistroInvalidoException(
+        'El nombre de usuario ya está registrado.',
+      );
+    }
+
+    final usuario = await _repo.registrar(
+      email: emailNormalizado,
+      nombreUsuario: nombreUsuarioNormalizado,
+      nombre: nombreNormalizado,
+      apellido: apellidoNormalizado,
       passwordHash: PasswordHasher.hash(passwordPlano),
     );
+    await _sesionRepo?.guardarSesion(usuario.idUsuario);
+    return usuario;
   }
 }
 
 class IniciarSesionUseCase {
   final AuthRepository _repo;
-  IniciarSesionUseCase(this._repo);
+  final SesionRepository? _sesionRepo;
 
-  Future<Usuario> ejecutar(String email, String passwordPlano) async {
-    final usuario = await _repo.autenticar(email, PasswordHasher.hash(passwordPlano));
+  IniciarSesionUseCase(this._repo, [this._sesionRepo]);
+
+  Future<Usuario> ejecutar(
+    String email,
+    String passwordPlano, {
+    bool mantenerSesion = true,
+  }) async {
+    final usuario = await _repo.autenticar(
+      email.trim().toLowerCase(),
+      PasswordHasher.hash(passwordPlano),
+    );
     if (usuario == null) throw CredencialesInvalidasException();
+    if (mantenerSesion && _sesionRepo != null) {
+      await _sesionRepo.guardarSesion(usuario.idUsuario);
+    }
     return usuario;
   }
+}
+
+class RestaurarSesionUseCase {
+  final SesionRepository _sesionRepo;
+  final AuthRepository _authRepo;
+
+  RestaurarSesionUseCase(this._sesionRepo, this._authRepo);
+
+  Future<Usuario?> ejecutar() async {
+    final idUsuario = await _sesionRepo.obtenerIdUsuarioActivo();
+    if (idUsuario == null) return null;
+
+    final usuario = await _authRepo.obtenerPorId(idUsuario);
+    if (usuario == null) {
+      await _sesionRepo.cerrarSesion();
+      return null;
+    }
+    return usuario;
+  }
+}
+
+class CerrarSesionUseCase {
+  final SesionRepository _sesionRepo;
+
+  CerrarSesionUseCase(this._sesionRepo);
+
+  Future<void> ejecutar() => _sesionRepo.cerrarSesion();
 }

@@ -1,4 +1,5 @@
 import 'package:uuid/uuid.dart';
+
 import '../../../domain/entities/usuario.dart';
 import '../../../domain/repositories/auth_repository.dart';
 import 'database_helper.dart';
@@ -9,12 +10,42 @@ class SqliteAuthRepository implements AuthRepository {
   SqliteAuthRepository(this._dbHelper);
 
   @override
-  Future<bool> existeEmailORusuario(String email, String nombreUsuario) async {
+  Future<Usuario?> obtenerPorId(String idUsuario) async {
     final db = await _dbHelper.database;
     final filas = await db.query(
       'usuario',
-      where: 'email = ? OR nombre_usuario = ?',
-      whereArgs: [email, nombreUsuario],
+      where: 'id_usuario = ?',
+      whereArgs: [idUsuario],
+    );
+    if (filas.isEmpty) return null;
+    final r = filas.first;
+    return Usuario(
+      idUsuario: r['id_usuario'] as String,
+      email: r['email'] as String,
+      nombreUsuario: r['nombre_usuario'] as String,
+      nombre: r['nombre'] as String? ?? '',
+      apellido: r['apellido'] as String? ?? '',
+    );
+  }
+
+  @override
+  Future<bool> existeEmail(String email) async {
+    final db = await _dbHelper.database;
+    final filas = await db.query(
+      'usuario',
+      where: 'lower(email) = ?',
+      whereArgs: [email.toLowerCase()],
+    );
+    return filas.isNotEmpty;
+  }
+
+  @override
+  Future<bool> existeNombreUsuario(String nombreUsuario) async {
+    final db = await _dbHelper.database;
+    final filas = await db.query(
+      'usuario',
+      where: 'nombre_usuario = ?',
+      whereArgs: [nombreUsuario],
     );
     return filas.isNotEmpty;
   }
@@ -30,19 +61,20 @@ class SqliteAuthRepository implements AuthRepository {
     final db = await _dbHelper.database;
     final id = _uuid.v4();
 
-    await db.insert('usuario', {
-      'id_usuario': id,
-      'email': email,
-      'nombre_usuario': nombreUsuario,
-      'password_hash': passwordHash,
-      'nombre': nombre,
-      'apellido': apellido,
-    });
+    await db.transaction((txn) async {
+      await txn.insert('usuario', {
+        'id_usuario': id,
+        'email': email,
+        'nombre_usuario': nombreUsuario,
+        'password_hash': passwordHash,
+        'nombre': nombre,
+        'apellido': apellido,
+      });
 
-    // El registro de progreso nace junto con el usuario.
-    await db.insert('progreso_usuario', {
-      'id_progreso': _uuid.v4(),
-      'id_usuario': id,
+      await txn.insert('progreso_usuario', {
+        'id_progreso': _uuid.v4(),
+        'id_usuario': id,
+      });
     });
 
     return Usuario(
@@ -59,8 +91,8 @@ class SqliteAuthRepository implements AuthRepository {
     final db = await _dbHelper.database;
     final filas = await db.query(
       'usuario',
-      where: 'email = ? AND password_hash = ?',
-      whereArgs: [email, passwordHash],
+      where: 'lower(email) = ? AND password_hash = ?',
+      whereArgs: [email.toLowerCase(), passwordHash],
     );
     if (filas.isEmpty) return null;
     final r = filas.first;
