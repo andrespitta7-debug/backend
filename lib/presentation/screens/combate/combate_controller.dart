@@ -27,6 +27,7 @@ class CombateController extends ChangeNotifier {
   int vidaJugador = 100;
   int vidaEnemigo = 30;
   String? mensajeUltimoTurno;
+  ResultadoCombate? resultadoUltimoTurno;
   bool cargando = true;
   bool encuentroSuperado =
       false; // se venció al enemigo actual, pero faltan más
@@ -41,6 +42,7 @@ class CombateController extends ChangeNotifier {
     cargando = true;
     combateTerminado = false;
     encuentroSuperado = false;
+    resultadoUltimoTurno = null;
     vidaJugador = 100;
     notifyListeners();
 
@@ -66,6 +68,7 @@ class CombateController extends ChangeNotifier {
       opcion,
       esJefe: _encuentros[_indiceActual].esJefe,
     );
+    resultadoUltimoTurno = resultado;
     vidaEnemigo = (vidaEnemigo - resultado.danoAlEnemigo).clamp(0, 999);
     vidaJugador = (vidaJugador - resultado.danoAlJugador).clamp(0, 999);
 
