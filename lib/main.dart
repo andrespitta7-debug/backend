@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'domain/usecases/responder_encuentro_usecase.dart';
 import 'domain/usecases/auth_usecases.dart';
 import 'domain/usecases/finalizar_partida_usecase.dart';
+import 'domain/usecases/generar_quest_usecase.dart';
 import 'domain/usecases/obtener_progreso_usecase.dart';
+import 'domain/usecases/responder_encuentro_usecase.dart';
+import 'infrastructure/generation/stub_quest_generator.dart';
 import 'infrastructure/persistence/sqlite/database_helper.dart';
-import 'infrastructure/persistence/sqlite/sqlite_quest_repository.dart';
 import 'infrastructure/persistence/sqlite/sqlite_auth_repository.dart';
 import 'infrastructure/persistence/sqlite/sqlite_partida_repository.dart';
-import 'presentation/screens/combate/combate_controller.dart';
+import 'infrastructure/persistence/sqlite/sqlite_quest_repository.dart';
 import 'presentation/screens/auth/auth_controller.dart';
 import 'presentation/screens/auth/login_screen.dart';
+import 'presentation/screens/combate/combate_controller.dart';
 import 'presentation/screens/progreso/progreso_controller.dart';
 
 Future<void> main() async {
@@ -30,12 +32,22 @@ Future<void> main() async {
   final iniciarSesionUseCase = IniciarSesionUseCase(authRepository);
   final finalizarPartidaUseCase = FinalizarPartidaUseCase(partidaRepository);
   final obtenerProgresoUseCase = ObtenerProgresoUseCase(partidaRepository);
+  // Aquí se cambia StubQuestGenerator por el adaptador real cuando exista.
+  final generarQuestUseCase = GenerarQuestUseCase(
+    StubQuestGenerator(),
+    questRepository,
+  );
 
   runApp(
     MultiProvider(
       providers: [
+        Provider<GenerarQuestUseCase>(create: (_) => generarQuestUseCase),
         ChangeNotifierProvider(
-          create: (_) => CombateController(questRepository, responderUseCase, finalizarPartidaUseCase),
+          create: (_) => CombateController(
+            questRepository,
+            responderUseCase,
+            finalizarPartidaUseCase,
+          ),
         ),
         ChangeNotifierProvider(
           create: (_) => AuthController(registrarUseCase, iniciarSesionUseCase),
