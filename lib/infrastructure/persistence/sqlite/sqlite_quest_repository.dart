@@ -1,6 +1,6 @@
-import '../../../domain/entities/quest.dart';
 import '../../../domain/entities/encuentro.dart';
 import '../../../domain/entities/opcion_encuentro.dart';
+import '../../../domain/entities/quest.dart';
 import '../../../domain/repositories/quest_repository.dart';
 import 'database_helper.dart';
 
@@ -14,7 +14,11 @@ class SqliteQuestRepository implements QuestRepository {
   @override
   Future<Quest?> obtenerQuestPorId(String idQuest) async {
     final db = await _dbHelper.database;
-    final rows = await db.query('quest', where: 'id_quest = ?', whereArgs: [idQuest]);
+    final rows = await db.query(
+      'quest',
+      where: 'id_quest = ?',
+      whereArgs: [idQuest],
+    );
     if (rows.isEmpty) return null;
     final r = rows.first;
     return Quest(
@@ -45,28 +49,33 @@ class SqliteQuestRepository implements QuestRepository {
         'opcion_encuentro',
         where: 'id_encuentro = ?',
         whereArgs: [idEncuentro],
+        orderBy: 'letra ASC',
       );
 
       final opciones = filasOpciones
-          .map((o) => OpcionEncuentro(
-                idOpcion: o['id_opcion'] as String,
-                idEncuentro: o['id_encuentro'] as String,
-                letra: o['letra'] as String,
-                texto: o['texto'] as String,
-                calidad: o['calidad'] as int,
-              ))
+          .map(
+            (o) => OpcionEncuentro(
+              idOpcion: o['id_opcion'] as String,
+              idEncuentro: o['id_encuentro'] as String,
+              letra: o['letra'] as String,
+              texto: o['texto'] as String,
+              calidad: o['calidad'] as int,
+            ),
+          )
           .toList();
 
-      encuentros.add(Encuentro(
-        idEncuentro: idEncuentro,
-        idQuest: fila['id_quest'] as String,
-        numero: fila['numero'] as int,
-        pregunta: fila['pregunta'] as String,
-        dificultad: fila['dificultad'] as String? ?? 'facil',
-        tipoEncuentro: fila['tipo_encuentro'] as String? ?? 'normal',
-        vidaEnemigo: fila['vida_enemigo'] as int? ?? 30,
-        opciones: opciones,
-      ));
+      encuentros.add(
+        Encuentro(
+          idEncuentro: idEncuentro,
+          idQuest: fila['id_quest'] as String,
+          numero: fila['numero'] as int,
+          pregunta: fila['pregunta'] as String,
+          dificultad: fila['dificultad'] as String? ?? 'facil',
+          tipoEncuentro: fila['tipo_encuentro'] as String? ?? 'normal',
+          vidaEnemigo: fila['vida_enemigo'] as int? ?? 30,
+          opciones: opciones,
+        ),
+      );
     }
     return encuentros;
   }

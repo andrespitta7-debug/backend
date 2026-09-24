@@ -197,7 +197,7 @@ class DatabaseHelper {
       'id_encuentro': 'enc-001',
       'letra': 'D',
       'texto': 'Para borrar información del programa',
-      'calidad': 1,
+      'calidad': 0,
     });
 
     // Encuentro 2 (normal, un poco más difícil)
@@ -276,7 +276,7 @@ class DatabaseHelper {
       'id_encuentro': 'enc-003',
       'letra': 'D',
       'texto': 'Una pantalla de inicio del programa',
-      'calidad': 1,
+      'calidad': 0,
     });
   }
 }
