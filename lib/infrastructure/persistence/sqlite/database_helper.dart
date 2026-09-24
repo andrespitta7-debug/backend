@@ -20,6 +20,9 @@ class DatabaseHelper {
     return openDatabase(
       path,
       version: _dbVersion,
+      onConfigure: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON');
+      },
       onCreate: _crearTablas,
       onUpgrade: _migrar,
     );

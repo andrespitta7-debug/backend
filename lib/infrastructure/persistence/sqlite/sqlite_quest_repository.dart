@@ -1,6 +1,7 @@
 import '../../../domain/entities/encuentro.dart';
 import '../../../domain/entities/opcion_encuentro.dart';
 import '../../../domain/entities/quest.dart';
+import '../../../domain/entities/quest_completa.dart';
 import '../../../domain/repositories/quest_repository.dart';
 import 'database_helper.dart';
 
@@ -72,7 +73,7 @@ class SqliteQuestRepository implements QuestRepository {
           pregunta: fila['pregunta'] as String,
           dificultad: fila['dificultad'] as String? ?? 'facil',
           tipoEncuentro: fila['tipo_encuentro'] as String? ?? 'normal',
-          vidaEnemigo: fila['vida_enemigo'] as int? ?? 30,
+          vidaEnemigo: fila['vida_enemigo'] as int? ?? 50,
           opciones: opciones,
         ),
       );
@@ -91,6 +92,44 @@ class SqliteQuestRepository implements QuestRepository {
       'dificultad': quest.dificultad,
       'descripcion': quest.descripcion,
       'fuente_generacion': quest.fuenteGeneracion,
+    });
+  }
+
+  @override
+  Future<void> guardarQuestCompleta(QuestCompleta questCompleta) async {
+    final db = await _dbHelper.database;
+    await db.transaction((txn) async {
+      await txn.insert('quest', {
+        'id_quest': questCompleta.quest.idQuest,
+        'titulo': questCompleta.quest.titulo,
+        'tema': questCompleta.quest.tema,
+        'categoria': questCompleta.quest.categoria,
+        'dificultad': questCompleta.quest.dificultad,
+        'descripcion': questCompleta.quest.descripcion,
+        'fuente_generacion': questCompleta.quest.fuenteGeneracion,
+      });
+
+      for (final encuentro in questCompleta.encuentros) {
+        await txn.insert('encuentro', {
+          'id_encuentro': encuentro.idEncuentro,
+          'id_quest': encuentro.idQuest,
+          'numero': encuentro.numero,
+          'pregunta': encuentro.pregunta,
+          'dificultad': encuentro.dificultad,
+          'tipo_encuentro': encuentro.tipoEncuentro,
+          'vida_enemigo': encuentro.vidaEnemigo,
+        });
+
+        for (final opcion in encuentro.opciones) {
+          await txn.insert('opcion_encuentro', {
+            'id_opcion': opcion.idOpcion,
+            'id_encuentro': opcion.idEncuentro,
+            'letra': opcion.letra,
+            'texto': opcion.texto,
+            'calidad': opcion.calidad,
+          });
+        }
+      }
     });
   }
 }
