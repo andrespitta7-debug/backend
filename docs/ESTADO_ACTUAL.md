@@ -11,7 +11,8 @@
 
 - MVP funcionando: auth, quest/encuentros, combate por turnos, Mi Progreso (ver Maestro §3).
 - Diccionario de datos v2 corregido (`V2SysQuest_Diccionario_de_Datos.md`).
-- Auditoría de dominio e infraestructura realizada (hallazgos en Maestro §3b).
+- Auditoría de dominio e infraestruct
+ura realizada (hallazgos en Maestro §3b).
 - GitHub Student verificado (Jhony) y Copilot Student activo en VS Code.
 - `.github/copilot-instructions.md` creado.
 - NotebookLM con 5 fuentes cargadas.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../combate/combate_screen.dart';
+import '../generar/generar_quest_screen.dart';
 import 'progreso_controller.dart';
 
 class ProgresoScreen extends StatefulWidget {
@@ -60,6 +61,20 @@ class _ProgresoScreenState extends State<ProgresoScreen> {
                       : '$tasaVictoria%',
                 ),
                 const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('Nueva quest con IA'),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            GenerarQuestScreen(idUsuario: widget.idUsuario),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.play_arrow),
                   label: const Text('Jugar otra quest'),

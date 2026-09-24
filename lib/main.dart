@@ -14,6 +14,7 @@ import 'infrastructure/persistence/sqlite/sqlite_quest_repository.dart';
 import 'presentation/screens/auth/auth_controller.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/combate/combate_controller.dart';
+import 'presentation/screens/generar_quest/generar_quest_controller.dart';
 import 'presentation/screens/progreso/progreso_controller.dart';
 
 Future<void> main() async {
@@ -42,6 +43,9 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         Provider<GenerarQuestUseCase>(create: (_) => generarQuestUseCase),
+        ChangeNotifierProvider(
+          create: (_) => GenerarQuestController(generarQuestUseCase),
+        ),
         ChangeNotifierProvider(
           create: (_) => CombateController(
             questRepository,
