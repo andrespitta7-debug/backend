@@ -17,13 +17,27 @@ class PerfilScreen extends StatefulWidget {
 
 class _PerfilScreenState extends State<PerfilScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _passwordFormKey = GlobalKey<FormState>();
+
   late Usuario _usuario;
   late final TextEditingController _nombreController;
   late final TextEditingController _apellidoController;
   late final TextEditingController _nombreUsuarioController;
+
+  late final TextEditingController _passwordActualController;
+  late final TextEditingController _passwordNuevaController;
+  late final TextEditingController _passwordConfirmacionController;
+
   bool _editando = false;
   bool _guardando = false;
   String? _error;
+
+  bool _cambiandoPassword = false;
+  bool _guardandoPassword = false;
+  bool _ocultarActual = true;
+  bool _ocultarNueva = true;
+  bool _ocultarConfirmacion = true;
+  String? _errorPassword;
 
   @override
   void initState() {
@@ -34,6 +48,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
     _nombreUsuarioController = TextEditingController(
       text: _usuario.nombreUsuario,
     );
+    _passwordActualController = TextEditingController();
+    _passwordNuevaController = TextEditingController();
+    _passwordConfirmacionController = TextEditingController();
   }
 
   @override
@@ -41,6 +58,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
     _nombreController.dispose();
     _apellidoController.dispose();
     _nombreUsuarioController.dispose();
+    _passwordActualController.dispose();
+    _passwordNuevaController.dispose();
+    _passwordConfirmacionController.dispose();
     super.dispose();
   }
 
@@ -66,6 +86,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
     setState(() {
       _error = null;
       _editando = true;
+      _cambiandoPassword = false;
     });
   }
 
@@ -76,6 +97,31 @@ class _PerfilScreenState extends State<PerfilScreen> {
     setState(() {
       _error = null;
       _editando = false;
+    });
+  }
+
+  void _limpiarFormularioPassword() {
+    _passwordActualController.clear();
+    _passwordNuevaController.clear();
+    _passwordConfirmacionController.clear();
+    _ocultarActual = true;
+    _ocultarNueva = true;
+    _ocultarConfirmacion = true;
+    _errorPassword = null;
+  }
+
+  void _activarCambioPassword() {
+    setState(() {
+      _limpiarFormularioPassword();
+      _editando = false;
+      _cambiandoPassword = true;
+    });
+  }
+
+  void _cancelarCambioPassword() {
+    setState(() {
+      _limpiarFormularioPassword();
+      _cambiandoPassword = false;
     });
   }
 
@@ -117,6 +163,42 @@ class _PerfilScreenState extends State<PerfilScreen> {
     }
   }
 
+  Future<void> _guardarPassword() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (!(_passwordFormKey.currentState?.validate() ?? false)) return;
+
+    setState(() {
+      _guardandoPassword = true;
+      _errorPassword = null;
+    });
+
+    try {
+      await context.read<CambiarPasswordUseCase>().ejecutar(
+            usuario: _usuario,
+            passwordActual: _passwordActualController.text,
+            passwordNueva: _passwordNuevaController.text,
+            passwordConfirmacion: _passwordConfirmacionController.text,
+          );
+      if (!mounted) return;
+      _limpiarFormularioPassword();
+      setState(() {
+        _cambiandoPassword = false;
+        _guardandoPassword = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Contraseña actualizada')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _guardandoPassword = false;
+        _errorPassword = error is RegistroInvalidoException
+            ? error.mensaje
+            : 'No se pudo cambiar la contraseña, intenta de nuevo.';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -127,7 +209,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-          child: _editando ? _buildFormulario(context) : _buildLectura(context),
+          child: _editando
+              ? _buildFormulario(context)
+              : _cambiandoPassword
+                  ? _buildFormularioPassword(context)
+                  : _buildLectura(context),
         ),
       ),
     );
@@ -159,6 +245,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
           onPressed: _activarEdicion,
           icon: const Icon(Icons.edit_outlined),
           label: const Text('Editar perfil'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: _activarCambioPassword,
+          icon: const Icon(Icons.lock_outline),
+          label: const Text('Cambiar contraseña'),
         ),
       ],
     );
@@ -234,6 +326,148 @@ class _PerfilScreenState extends State<PerfilScreen> {
               const SizedBox(height: 8),
               TextButton(
                 onPressed: _guardando ? null : _cancelarEdicion,
+                child: const Text('Cancelar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormularioPassword(BuildContext context) {
+    return Form(
+      key: _passwordFormKey,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Cambiar contraseña',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _passwordActualController,
+                enabled: !_guardandoPassword,
+                obscureText: _ocultarActual,
+                textInputAction: TextInputAction.next,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Ingresa tu contraseña actual.';
+                  }
+                  return null;
+                },
+                decoration: InputDecoration(
+                  labelText: 'Contraseña actual',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _ocultarActual
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _ocultarActual = !_ocultarActual;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _passwordNuevaController,
+                enabled: !_guardandoPassword,
+                obscureText: _ocultarNueva,
+                textInputAction: TextInputAction.next,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Ingresa la nueva contraseña.';
+                  }
+                  if (value.length < 8 ||
+                      !RegExp(r'[A-Za-z]').hasMatch(value) ||
+                      !RegExp(r'[0-9]').hasMatch(value)) {
+                    return 'La contraseña debe tener al menos 8 caracteres, una letra y un número.';
+                  }
+                  if (value == _passwordActualController.text) {
+                    return 'La nueva contraseña no puede ser igual a la actual.';
+                  }
+                  return null;
+                },
+                decoration: InputDecoration(
+                  labelText: 'Nueva contraseña',
+                  prefixIcon: const Icon(Icons.lock_reset_outlined),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _ocultarNueva
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _ocultarNueva = !_ocultarNueva;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _passwordConfirmacionController,
+                enabled: !_guardandoPassword,
+                obscureText: _ocultarConfirmacion,
+                textInputAction: TextInputAction.done,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Confirma tu nueva contraseña.';
+                  }
+                  if (value != _passwordNuevaController.text) {
+                    return 'Las contraseñas no coinciden.';
+                  }
+                  return null;
+                },
+                decoration: InputDecoration(
+                  labelText: 'Confirmar nueva contraseña',
+                  prefixIcon: const Icon(Icons.check_circle_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _ocultarConfirmacion
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _ocultarConfirmacion = !_ocultarConfirmacion;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              if (_errorPassword != null) ...[
+                const SizedBox(height: 16),
+                _ErrorBanner(mensaje: _errorPassword!),
+              ],
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _guardandoPassword ? null : _guardarPassword,
+                  child: _guardandoPassword
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        )
+                      : const Text('Guardar contraseña'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _guardandoPassword ? null : _cancelarCambioPassword,
                 child: const Text('Cancelar'),
               ),
             ],

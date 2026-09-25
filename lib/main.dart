@@ -51,6 +51,7 @@ Future<void> main() async {
   );
   final cerrarSesionUseCase = CerrarSesionUseCase(sesionRepository);
   final actualizarPerfilUseCase = ActualizarPerfilUseCase(authRepository);
+  final cambiarPasswordUseCase = CambiarPasswordUseCase(authRepository);
   final finalizarPartidaUseCase = FinalizarPartidaUseCase(partidaRepository);
   final obtenerProgresoUseCase = ObtenerProgresoUseCase(partidaRepository);
   // Aquí se cambia StubQuestGenerator por el adaptador real cuando exista.
@@ -67,6 +68,9 @@ Future<void> main() async {
         Provider<CerrarSesionUseCase>(create: (_) => cerrarSesionUseCase),
         Provider<ActualizarPerfilUseCase>(
           create: (_) => actualizarPerfilUseCase,
+        ),
+        Provider<CambiarPasswordUseCase>(
+          create: (_) => cambiarPasswordUseCase,
         ),
         ChangeNotifierProvider(
           create: (_) => GenerarQuestController(generarQuestUseCase),

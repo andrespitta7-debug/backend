@@ -2,14 +2,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sysquest_app/domain/entities/usuario.dart';
 import 'package:sysquest_app/domain/repositories/auth_repository.dart';
 import 'package:sysquest_app/domain/usecases/auth_usecases.dart';
+import 'package:sysquest_app/domain/usecases/password_hasher.dart';
 import 'package:sysquest_app/domain/usecases/perfil_usecases.dart';
 
 class FakePerfilAuthRepository implements AuthRepository {
-  FakePerfilAuthRepository({this.nombreUsuarioEnUso});
+  FakePerfilAuthRepository({
+    this.nombreUsuarioEnUso,
+    this.passwordHashValido,
+  });
 
   final String? nombreUsuarioEnUso;
+  final String? passwordHashValido;
   Usuario? usuarioActualizado;
   bool consultoNombreExcepto = false;
+  String? idUsuarioPasswordCambiado;
+  String? nuevoHashGuardado;
 
   @override
   Future<void> actualizar(Usuario usuario) async {
@@ -46,7 +53,18 @@ class FakePerfilAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Usuario?> autenticar(String email, String passwordHash) async => null;
+  Future<Usuario?> autenticar(String email, String passwordHash) async {
+    if (passwordHashValido != null && passwordHash == passwordHashValido) {
+      return usuarioInicial;
+    }
+    return null;
+  }
+
+  @override
+  Future<void> cambiarPassword(String idUsuario, String nuevoHash) async {
+    idUsuarioPasswordCambiado = idUsuario;
+    nuevoHashGuardado = nuevoHash;
+  }
 }
 
 const usuarioInicial = Usuario(
@@ -230,6 +248,132 @@ void main() {
 
       expect(actualizado.email, 'ana@example.com');
       expect(repo.usuarioActualizado?.email, 'ana@example.com');
+    });
+  });
+
+  group('CambiarPasswordUseCase', () {
+    test('cambiar password válido', () async {
+      final repo = FakePerfilAuthRepository(
+        passwordHashValido: PasswordHasher.hash('Actual123'),
+      );
+      final useCase = CambiarPasswordUseCase(repo);
+
+      await useCase.ejecutar(
+        usuario: usuarioInicial,
+        passwordActual: 'Actual123',
+        passwordNueva: 'NuevaPass1',
+        passwordConfirmacion: 'NuevaPass1',
+      );
+
+      expect(repo.idUsuarioPasswordCambiado, usuarioInicial.idUsuario);
+      expect(repo.nuevoHashGuardado, PasswordHasher.hash('NuevaPass1'));
+    });
+
+    test('password actual incorrecta → error', () async {
+      final repo = FakePerfilAuthRepository(
+        passwordHashValido: PasswordHasher.hash('Correcta123'),
+      );
+      final useCase = CambiarPasswordUseCase(repo);
+
+      await expectLater(
+        useCase.ejecutar(
+          usuario: usuarioInicial,
+          passwordActual: 'Erronea123',
+          passwordNueva: 'NuevaPass1',
+          passwordConfirmacion: 'NuevaPass1',
+        ),
+        throwsA(
+          isA<RegistroInvalidoException>().having(
+            (error) => error.mensaje,
+            'mensaje',
+            'La contraseña actual es incorrecta.',
+          ),
+        ),
+      );
+      expect(repo.nuevoHashGuardado, isNull);
+    });
+
+    test(
+      'nueva password no cumple reglas (menos de 8, sin número, sin letra) → error',
+      () async {
+        final repo = FakePerfilAuthRepository(
+          passwordHashValido: PasswordHasher.hash('Actual123'),
+        );
+        final useCase = CambiarPasswordUseCase(repo);
+
+        final casosInvalidos = [
+          'Abc1', // menos de 8
+          'Abcdefgh', // sin número
+          '12345678', // sin letra
+        ];
+
+        for (final pass in casosInvalidos) {
+          await expectLater(
+            useCase.ejecutar(
+              usuario: usuarioInicial,
+              passwordActual: 'Actual123',
+              passwordNueva: pass,
+              passwordConfirmacion: pass,
+            ),
+            throwsA(
+              isA<RegistroInvalidoException>().having(
+                (error) => error.mensaje,
+                'mensaje',
+                'La contraseña debe tener al menos 8 caracteres, una letra y un número.',
+              ),
+            ),
+          );
+        }
+        expect(repo.nuevoHashGuardado, isNull);
+      },
+    );
+
+    test('confirmación no coincide → error', () async {
+      final repo = FakePerfilAuthRepository(
+        passwordHashValido: PasswordHasher.hash('Actual123'),
+      );
+      final useCase = CambiarPasswordUseCase(repo);
+
+      await expectLater(
+        useCase.ejecutar(
+          usuario: usuarioInicial,
+          passwordActual: 'Actual123',
+          passwordNueva: 'NuevaPass1',
+          passwordConfirmacion: 'DistintaPass2',
+        ),
+        throwsA(
+          isA<RegistroInvalidoException>().having(
+            (error) => error.mensaje,
+            'mensaje',
+            'Las contraseñas no coinciden.',
+          ),
+        ),
+      );
+      expect(repo.nuevoHashGuardado, isNull);
+    });
+
+    test('nueva igual a la actual → error', () async {
+      final repo = FakePerfilAuthRepository(
+        passwordHashValido: PasswordHasher.hash('Actual123'),
+      );
+      final useCase = CambiarPasswordUseCase(repo);
+
+      await expectLater(
+        useCase.ejecutar(
+          usuario: usuarioInicial,
+          passwordActual: 'Actual123',
+          passwordNueva: 'Actual123',
+          passwordConfirmacion: 'Actual123',
+        ),
+        throwsA(
+          isA<RegistroInvalidoException>().having(
+            (error) => error.mensaje,
+            'mensaje',
+            'La nueva contraseña no puede ser igual a la actual.',
+          ),
+        ),
+      );
+      expect(repo.nuevoHashGuardado, isNull);
     });
   });
 }

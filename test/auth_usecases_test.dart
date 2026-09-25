@@ -80,6 +80,11 @@ class FakeAuthRepository implements AuthRepository {
     ultimoEmailConsultado = email;
     return null;
   }
+
+  @override
+  Future<void> cambiarPassword(String idUsuario, String nuevoHash) async {
+    hashes[idUsuario] = nuevoHash;
+  }
 }
 
 class FakeSesionRepository implements SesionRepository {

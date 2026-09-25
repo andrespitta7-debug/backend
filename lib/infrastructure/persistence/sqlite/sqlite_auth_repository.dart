@@ -137,4 +137,17 @@ class SqliteAuthRepository implements AuthRepository {
       apellido: r['apellido'] as String? ?? '',
     );
   }
+
+  @override
+  Future<void> cambiarPassword(String idUsuario, String nuevoHash) async {
+    final db = await _dbHelper.database;
+    await db.rawUpdate(
+      '''
+      UPDATE usuario
+      SET password_hash = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id_usuario = ?
+      ''',
+      [nuevoHash, idUsuario],
+    );
+  }
 }

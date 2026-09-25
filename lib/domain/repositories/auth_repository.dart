@@ -26,4 +26,6 @@ abstract class AuthRepository {
 
   /// Devuelve el Usuario si el email y el hash coinciden; null si no.
   Future<Usuario?> autenticar(String email, String passwordHash);
+
+  Future<void> cambiarPassword(String idUsuario, String nuevoHash);
 }
