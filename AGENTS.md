@@ -1,178 +1,149 @@
-# AGENTS.md - SysQuest Backend
+# AGENTS.md — SysQuest
 
-This file is the permanent working manual for code agents contributing to the SysQuest backend repository.
+Este archivo es el manual de trabajo para asistentes de código (GitHub
+Copilot, Antigravity, Claude, DeepSeek, etc.) que contribuyan al
+repositorio de SysQuest.
 
-## Project Context
+SysQuest tiene dos partes:
+1. **App Flutter** (esta carpeta) — implementada, con SQLite local.
+2. **Backend Supabase** (proyecto aparte) — planeado, aún no construido.
 
-SysQuest is an educational gamified application for university students. The MVP direction is a 2D pixel-art turn-based RPG where a user enters a technical topic and receives a dynamically generated quest.
+---
 
-Core product loop:
+## PARTE 1: App Flutter (esta carpeta)
 
-1. User signs up or logs in.
-2. User enters a technical topic.
-3. Backend generates or retrieves a quest for that topic.
-4. The quest contains encounters.
-5. Each encounter presents a multiple-choice question.
-6. The player answers.
-7. Answer quality affects combat.
-8. Enemies scale in difficulty.
-9. A basic boss appears at the end.
-10. Player progress is saved.
+### Contexto
 
-## Stack
+App educativa gamificada para estudiantes de Ingeniería de Sistemas.
+Motor RPG de combate por turnos: el jugador elige un tema, se genera una
+quest con encuentros, y cada encuentro es una pregunta A/B/C/D cuya
+calidad afecta el combate.
 
-Frontend repository:
+### Documentos fuente
 
-- Flutter.
-- Dart.
-- Android target for the current cycle.
-- Local persistence with SQLite through `sqflite`.
+- `docs/SysQuest_Contexto_Maestro_v3.md` — fuente única de verdad.
+- `docs/ESTADO_ACTUAL.md` — bitácora viva.
+- `docs/V2SysQuest_Diccionario_de_Datos.md` — esquema SQLite.
 
-Backend repository:
+### Stack
 
-- Supabase.
-- PostgreSQL.
+- Flutter + Dart.
+- SQLite local vía `sqflite` (esquema versión 2, 7 tablas).
+- `shared_preferences` para sesión persistente.
+- Solo Android.
+
+### Arquitectura (hexagonal — NO rediseñar)
+lib/
+├── domain/ ← reglas puras, sin Flutter ni SQLite
+│ ├── entities/ Usuario, Quest, Encuentro, OpcionEncuentro,
+│ │ Personaje, Partida, ProgresoUsuario
+│ ├── repositories/ puertos (interfaces)
+│ └── usecases/ casos de uso + PasswordHasher
+├── infrastructure/
+│ └── persistence/ adaptadores SQLite + shared_preferences
+├── presentation/
+│ ├── screens/ auth/, menu/, combate/, generar/, progreso/, perfil/
+│ └── theme/ app_theme.dart
+└── main.dart ← DI con Provider
+
+text
+
+Reglas duras:
+- `domain/` no importa Flutter ni SQLite.
+- `infrastructure/` implementa los puertos de `domain/`.
+- `presentation/` usa los casos de uso inyectados con Provider.
+- No inventar controladores nuevos si ya existe uno.
+
+### Reglas de negocio vigentes
+
+| Regla | Valor |
+|---|---|
+| Vida inicial | 100 |
+| `calidad` 2 | 25 daño al enemigo |
+| `calidad` 1 | 12 daño al enemigo |
+| `calidad` 0 | 15 contraataque al jugador |
+| Jefe | crítico +10, acierto +5, contraataque 25 |
+| XP | victoria 50, derrota 10 |
+| Nivel | `1 + xpTotal ~/ 100` |
+| Contraseña | 8+ caracteres con letra y número (solo registro) |
+
+### Protocolo de trabajo
+
+1. Diseño en el chat (Claude/DeepSeek).
+2. Implementación con Copilot/Antigravity.
+3. Revisión pegando el `git diff` en el chat.
+4. Commit pequeño, uno por paso.
+5. Actualizar `docs/ESTADO_ACTUAL.md`.
+
+### Reglas de Git (app Flutter)
+
+- Commits pequeños, uno por paso del roadmap.
+- Mensajes en español: `feat:`, `fix:`, `chore:`, `docs:`.
+- **Ejecutar `flutter test` y `dart analyze` antes de cada commit.**
+- No commitear si los tests fallan.
+- No commitear `build/`, `.dart_tool/`, ni
+  `macos/Flutter/GeneratedPluginRegistrant.swift`.
+
+### Roadmap actual
+
+- ✅ Paso 1: bug del daño flotante.
+- ✅ Paso 2: auth + sesión persistente.
+- ✅ Paso 3: menú principal.
+- ✅ Paso 4a: perfil CRUD (ver + editar).
+- ⏳ Paso 4b: cambiar contraseña.
+- ⏳ Paso 4c: eliminar cuenta.
+- ⏳ Paso 5: generar APK instalable.
+- ⏳ Paso 6: 6 quests preset (Debug, Database, Algorithm, Network,
+  Architecture, Cyber) con contenido pre-cargado.
+- ⏳ Paso 7: continuar partida guardada.
+- ⏳ Paso 8: menú de pausa en el combate.
+- ⏳ Paso 9: mostrar puntuación al final de la partida.
+
+---
+
+## PARTE 2: Backend Supabase (proyecto aparte, aún no construido)
+
+### Stack
+
+- Supabase + PostgreSQL.
 - Supabase Auth.
-- Server-side AI generation through Gemini or Groq.
+- Supabase Edge Functions.
+- Generación con IA vía Gemini o Groq (siempre detrás del backend).
 
-Important rule: the frontend must never call the AI provider directly. AI keys and provider calls belong only behind backend-controlled services.
+### Regla crítica
 
-## Backend Architecture
+**La app Flutter NUNCA llama a la IA directamente.** Las API keys y
+llamadas al proveedor viven solo detrás del backend.
 
-Use this responsibility flow:
+### Flujo de responsabilidades
+API → Business Logic → Services → Repositories → Supabase/PostgreSQL
 
-```text
-API
-  -> Business Logic
-  -> Services
-  -> Repositories
-  -> Supabase / PostgreSQL
-```
+text
 
-For AI generation:
+### Seguridad
 
-```text
-Flutter
-  -> Backend
-  -> AI Provider
-  -> Quest JSON
-  -> Backend
-  -> Flutter
-```
+- Nunca hardcodear API keys, tokens, JWT secrets, service keys.
+- Usar variables de entorno.
+- Commitear `.env.example`, no `.env`.
+- Tratar todo output de IA como input no confiable.
 
-For fallback:
+### Git (backend)
 
-```text
-Flutter
-  -> Backend
-  -> Fallback local/pre-generated content
-  -> Quest JSON
-  -> Flutter
-```
+- Nunca trabajar en `main`.
+- Ramas `feature/SQ-XXX-descripcion`.
+- Commits con id de Jira: `SQ-001 add backend audit docs`.
 
-Recommended backend areas:
+### Estado
 
-- `auth`: Supabase Auth/JWT verification.
-- `quests`: quest generation, retrieval, validation, and persistence.
-- `encounters`: answer validation and encounter outcome rules.
-- `progress`: remote progress persistence.
-- `ai`: AI provider abstraction and adapters.
-- `fallback`: pre-generated quests/questions for outages or rate limits.
-- `admin`: basic admin capabilities.
+No construido. Comienza el miércoles. Este repo se creará aparte o en
+una carpeta `backend/` dentro del mismo repo (por confirmar).
 
-## Coding Rules
+---
 
-- Keep changes small and tied to one Jira issue.
-- Do not implement future-scope features without explicit approval.
-- Separate API handlers, business logic, services, and repositories.
-- Validate all external input.
-- Validate all AI-generated quest JSON before storing or returning it.
-- Prefer simple, testable modules over broad abstractions.
-- Document significant architecture decisions before implementing them.
-- Do not remove existing code automatically when requirements conflict; document the contradiction first.
+## Si eres un asistente leyendo esto
 
-## Security Rules
-
-- Never hardcode API keys, passwords, tokens, JWT secrets, Supabase service keys, or AI provider credentials.
-- Use environment variables for sensitive configuration.
-- Commit `.env.example`, not `.env`.
-- Keep provider credentials backend-side only.
-- Treat all AI output as untrusted input.
-- Use least-privilege database policies and access tokens.
-- Public repositories require extra care with generated files, logs, and local config.
-
-## Git Rules
-
-- Never work directly on `main`.
-- Use one branch per Jira task.
-- Branch format: `feature/SQ-XXX-description`.
-- Commit messages must include the Jira id, for example: `SQ-001 add backend audit docs`.
-- Keep commits small and reviewable.
-- Pull requests must include:
-  - Summary.
-  - Changes made.
-  - Tests run.
-  - Possible risks.
-  - Related Jira tasks.
-
-## Testing Rules
-
-- Add or update tests for any backend behavior.
-- For scaffold-only or documentation-only changes, state that no runtime tests were applicable.
-- Add contract tests around quest JSON before AI generation is integrated.
-- Add tests for fallback behavior before depending on external AI providers.
-- Do not merge feature code without at least basic automated validation.
-
-## Current MVP Scope
-
-Included:
-
-- Register/login.
-- App/web synchronization through Supabase Auth.
-- Functional turn-based combat.
-- AI-generated quest from a free topic.
-- Local fallback content.
-- Local and remote progress.
-- 2-3 character skins by gender.
-- Basic boss.
-- Basic hints/items.
-- Bilingual informational web page.
-- Basic admin panel.
-
-Out of scope:
-
-- Local multiplayer.
-- Complete layered equipment system.
-- Advanced animations.
-- iOS.
-- Complete monetization.
-
-## Ambiguous Decisions
-
-When a decision is unclear:
-
-1. Check this file and `docs/INITIAL_TECHNICAL_AUDIT.md` first.
-2. If the decision affects architecture, security, cost, provider choice, or data contracts, document the options.
-3. Do not silently choose a path that creates lock-in or exposes credentials.
-4. Ask for human confirmation when the tradeoff materially affects product direction.
-
-## Documentation Rules
-
-- Keep architecture decisions in `docs/`.
-- Update documentation in the same branch as the related change.
-- Record assumptions when requirements are incomplete.
-- Keep setup instructions current whenever dependencies or environment variables change.
-
-## First Recommended Slice
-
-Start with authentication/session foundation:
-
-```text
-Register/Login
-  -> Flutter
-  -> Supabase Auth
-  -> local session persistence
-  -> main screen
-```
-
-Backend responsibilities for that slice are limited to setup, auth verification, and minimal health/auth validation endpoints. Do not begin quest generation, combat, or admin features until the slice is reviewed and accepted.
+1. Lee `docs/ESTADO_ACTUAL.md` para saber en qué punto estamos.
+2. Lee la sección relevante del `docs/SysQuest_Contexto_Maestro_v3.md`.
+3. Revisa el código antes de modificarlo.
+4. Pregunta si algo no está claro. **No inventes.**
+5. Ejecuta `flutter test` y `dart analyze` al final.

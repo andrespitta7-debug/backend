@@ -3,7 +3,7 @@
 *Se actualiza al final de CADA sesión de trabajo (2 minutos). Va junto al Contexto Maestro al abrir un chat nuevo. Mantenerlo corto: si crece, mover lo antiguo a la bitácora.*
 
 **Última actualización:** 24-sep-2026
-**Último commit conocido:** `4c3ec18` — fix: reescribir gitignore sin BOM
+**Último commit conocido:** `ddc4810` — feat: perfil CRUD - ver y editar (paso 4a)
 
 ---
 
@@ -18,24 +18,24 @@
 - **Paso 1 — Bug del daño flotante corregido.** El número sale en la barra correcta. Test de widget en `test/combate_damage_widget_test.dart`. Commit `c8b74e7`.
 - **Paso 2 — Auth completa + sesión persistente.** `AuthRepository` con `obtenerPorId`, `existeEmail`, `existeNombreUsuario`. Casos de uso nuevos: `RestaurarSesionUseCase`, `CerrarSesionUseCase`. `RegistrarUsuarioUseCase` con validaciones completas. `SharedPreferencesSesionRepository` implementado. `SqliteAuthRepository` con transacción en registro. Tests en `test/auth_usecases_test.dart`. Commit `3e2f1af`.
 - **Paso 3 — Menú principal tras login.** `MenuPrincipalScreen` con saludo, tres tarjetas y botón de cerrar sesión. `AuthGate` redirige al menú. Theme en `lib/presentation/theme/app_theme.dart`. Commit `c463a7f`.
-- Tests: 32/32 pasan. `dart analyze`: sin issues.
+- **Paso 4a — Perfil CRUD (ver + editar).** `ActualizarPerfilUseCase` + `PerfilScreen`. Métodos nuevos en `AuthRepository`. Tests en `test/perfil_usecases_test.dart`. Commit `ddc4810`.
+- Tests: 39/39 pasan. `dart analyze`: sin issues.
 
 ## En curso
 
-- **Paso 4 (siguiente):** Perfil CRUD — ver, editar, cambiar contraseña, eliminar cuenta.
-- Arreglos de la auditoría (Maestro §3b) que siguen pendientes:
-  - [ ] `calidad` corregidos en datos de prueba (`enc-001` opción D, `enc-003` opción D)
+- **Paso 4b (siguiente):** cambiar contraseña.
+- **Paso 4c:** eliminar cuenta.
+- Arreglos de la auditoría (Maestro §3b):
+  - [ ] `calidad` corregidos en datos de prueba
   - [ ] `orderBy: 'letra ASC'` en opciones
-  - [ ] `vida_enemigo` unificado (default SQL 50 vs respaldo 30)
-  - [ ] `PRAGMA foreign_keys = ON` vía `onConfigure`
+  - [ ] `vida_enemigo` unificado
+  - [ ] `PRAGMA foreign_keys = ON`
 
 ## Siguiente
 
-1. Ejecutar el Paso 4 (perfil CRUD) con el prompt preparado en el chat.
-2. Paso 5: generar APK instalable.
-3. Decidir esquema de Supabase (miércoles).
-4. Actualizar el Maestro con la nueva regla de contraseña (8+, no 6).
-5. Resolver contradicción "6 vs 8 caracteres" entre Maestro §3 y el código.
+1. Paso 4b (cambiar contraseña).
+2. Paso 4c (eliminar cuenta).
+3. Paso 5 (APK).
 
 ## Decisiones pendientes
 
@@ -65,4 +65,5 @@
 | 24-sep-2026 | Se completan los pasos 1, 2 y 3 (bug del daño, auth persistente, menú principal) y se suben a GitHub | Avance del roadmap; los prompts fueron diseñados en el chat y ejecutados con Copilot |
 | 24-sep-2026 | **Contraseña mínima sube de 6 a 8 caracteres con letra y número, solo en registro** | Endurecer seguridad sin romper usuarios existentes. Contradice el Maestro §3; actualizarlo |
 | 24-sep-2026 | `.gitignore` reescrito sin BOM tras detectar que PowerShell lo rompía | El archivo de macos seguía apareciendo como untracked |
+| 25-sep-2026 | Paso 4a completado: perfil CRUD (ver + editar). Nuevo `ActualizarPerfilUseCase`, `PerfilScreen`, y métodos `actualizar`/`existeNombreUsuarioExcepto` en `AuthRepository`. 39/39 tests. Commit `ddc4810`. | Avance del roadmap |
 | _(fecha)_ | _(siguiente entrada)_ | |
