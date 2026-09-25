@@ -28,4 +28,6 @@ abstract class AuthRepository {
   Future<Usuario?> autenticar(String email, String passwordHash);
 
   Future<void> cambiarPassword(String idUsuario, String nuevoHash);
+
+  Future<void> eliminarCuenta(String idUsuario);
 }

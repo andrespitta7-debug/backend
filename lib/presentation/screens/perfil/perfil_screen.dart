@@ -5,6 +5,7 @@ import '../../../domain/entities/usuario.dart';
 import '../../../domain/usecases/auth_usecases.dart';
 import '../../../domain/usecases/perfil_usecases.dart';
 import '../../theme/app_theme.dart';
+import '../auth/login_screen.dart';
 
 class PerfilScreen extends StatefulWidget {
   final Usuario usuario;
@@ -252,8 +253,160 @@ class _PerfilScreenState extends State<PerfilScreen> {
           icon: const Icon(Icons.lock_outline),
           label: const Text('Cambiar contraseña'),
         ),
+        const SizedBox(height: 32),
+        const Divider(color: AppTheme.superficieElevada),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          onPressed: () => _confirmarEliminarCuenta(context),
+          icon: const Icon(Icons.delete_forever_outlined),
+          label: const Text('Eliminar cuenta'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.rojoDanio,
+            foregroundColor: Colors.white,
+          ),
+        ),
       ],
     );
+  }
+
+  Future<void> _confirmarEliminarCuenta(BuildContext context) async {
+    final passwordController = TextEditingController();
+    bool ocultarPassword = true;
+    bool eliminando = false;
+    String? errorEliminar;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !eliminando,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: const Text('Eliminar cuenta'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Esta acción es permanente e irreversible. Se borrarán todos tus datos de progreso y partidas.',
+                      style: TextStyle(color: AppTheme.azulTexto),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: passwordController,
+                      enabled: !eliminando,
+                      obscureText: ocultarPassword,
+                      decoration: InputDecoration(
+                        labelText: 'Contraseña actual',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            ocultarPassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                          onPressed: () {
+                            setDialogState(() {
+                              ocultarPassword = !ocultarPassword;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    if (errorEliminar != null) ...[
+                      const SizedBox(height: 12),
+                      _ErrorBanner(mensaje: errorEliminar!),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: eliminando
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: eliminando
+                      ? null
+                      : () async {
+                          final password = passwordController.text;
+                          if (password.isEmpty) {
+                            setDialogState(() {
+                              errorEliminar =
+                                  'Ingresa tu contraseña para confirmar.';
+                            });
+                            return;
+                          }
+
+                          final eliminarCuentaUseCase =
+                              context.read<EliminarCuentaUseCase>();
+                          final cerrarSesionUseCase =
+                              context.read<CerrarSesionUseCase>();
+                          final navigator = Navigator.of(context);
+                          final messenger = ScaffoldMessenger.of(context);
+
+                          setDialogState(() {
+                            eliminando = true;
+                            errorEliminar = null;
+                          });
+
+                          try {
+                            await eliminarCuentaUseCase.ejecutar(
+                              usuario: _usuario,
+                              passwordActual: password,
+                            );
+                            await cerrarSesionUseCase.ejecutar();
+
+                            if (!dialogContext.mounted) return;
+                            Navigator.of(dialogContext).pop();
+                            navigator.pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const LoginScreen(),
+                              ),
+                              (route) => false,
+                            );
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Tu cuenta fue eliminada'),
+                              ),
+                            );
+                          } catch (error) {
+                            if (!dialogContext.mounted) return;
+                            setDialogState(() {
+                              eliminando = false;
+                              errorEliminar = error is RegistroInvalidoException
+                                  ? error.mensaje
+                                  : 'No se pudo eliminar la cuenta.';
+                            });
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.rojoDanio,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: eliminando
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : const Text('Eliminar cuenta'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    passwordController.dispose();
   }
 
   Widget _buildFormulario(BuildContext context) {

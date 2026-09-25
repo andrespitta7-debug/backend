@@ -85,6 +85,12 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> cambiarPassword(String idUsuario, String nuevoHash) async {
     hashes[idUsuario] = nuevoHash;
   }
+
+  @override
+  Future<void> eliminarCuenta(String idUsuario) async {
+    usuarios.removeWhere((u) => u.idUsuario == idUsuario);
+    hashes.remove(idUsuario);
+  }
 }
 
 class FakeSesionRepository implements SesionRepository {

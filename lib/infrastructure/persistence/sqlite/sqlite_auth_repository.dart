@@ -150,4 +150,31 @@ class SqliteAuthRepository implements AuthRepository {
       [nuevoHash, idUsuario],
     );
   }
+
+  @override
+  Future<void> eliminarCuenta(String idUsuario) async {
+    final db = await _dbHelper.database;
+    await db.transaction((txn) async {
+      await txn.delete(
+        'personaje',
+        where: 'id_usuario = ?',
+        whereArgs: [idUsuario],
+      );
+      await txn.delete(
+        'progreso_usuario',
+        where: 'id_usuario = ?',
+        whereArgs: [idUsuario],
+      );
+      await txn.delete(
+        'partida',
+        where: 'id_usuario = ?',
+        whereArgs: [idUsuario],
+      );
+      await txn.delete(
+        'usuario',
+        where: 'id_usuario = ?',
+        whereArgs: [idUsuario],
+      );
+    });
+  }
 }

@@ -17,6 +17,7 @@ class FakePerfilAuthRepository implements AuthRepository {
   bool consultoNombreExcepto = false;
   String? idUsuarioPasswordCambiado;
   String? nuevoHashGuardado;
+  String? idUsuarioEliminado;
 
   @override
   Future<void> actualizar(Usuario usuario) async {
@@ -64,6 +65,11 @@ class FakePerfilAuthRepository implements AuthRepository {
   Future<void> cambiarPassword(String idUsuario, String nuevoHash) async {
     idUsuarioPasswordCambiado = idUsuario;
     nuevoHashGuardado = nuevoHash;
+  }
+
+  @override
+  Future<void> eliminarCuenta(String idUsuario) async {
+    idUsuarioEliminado = idUsuario;
   }
 }
 
@@ -374,6 +380,44 @@ void main() {
         ),
       );
       expect(repo.nuevoHashGuardado, isNull);
+    });
+  });
+
+  group('EliminarCuentaUseCase', () {
+    test('eliminación válida', () async {
+      final repo = FakePerfilAuthRepository(
+        passwordHashValido: PasswordHasher.hash('MiPassword123'),
+      );
+      final useCase = EliminarCuentaUseCase(repo);
+
+      await useCase.ejecutar(
+        usuario: usuarioInicial,
+        passwordActual: 'MiPassword123',
+      );
+
+      expect(repo.idUsuarioEliminado, usuarioInicial.idUsuario);
+    });
+
+    test('contraseña incorrecta → error', () async {
+      final repo = FakePerfilAuthRepository(
+        passwordHashValido: PasswordHasher.hash('Correcta123'),
+      );
+      final useCase = EliminarCuentaUseCase(repo);
+
+      await expectLater(
+        useCase.ejecutar(
+          usuario: usuarioInicial,
+          passwordActual: 'Incorrecta123',
+        ),
+        throwsA(
+          isA<RegistroInvalidoException>().having(
+            (error) => error.mensaje,
+            'mensaje',
+            'La contraseña es incorrecta.',
+          ),
+        ),
+      );
+      expect(repo.idUsuarioEliminado, isNull);
     });
   });
 }

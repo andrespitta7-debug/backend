@@ -101,3 +101,24 @@ class CambiarPasswordUseCase {
     );
   }
 }
+
+class EliminarCuentaUseCase {
+  final AuthRepository _repo;
+
+  EliminarCuentaUseCase(this._repo);
+
+  Future<void> ejecutar({
+    required Usuario usuario,
+    required String passwordActual,
+  }) async {
+    final usuarioAutenticado = await _repo.autenticar(
+      usuario.email,
+      PasswordHasher.hash(passwordActual),
+    );
+    if (usuarioAutenticado == null) {
+      throw RegistroInvalidoException('La contraseña es incorrecta.');
+    }
+
+    await _repo.eliminarCuenta(usuario.idUsuario);
+  }
+}
