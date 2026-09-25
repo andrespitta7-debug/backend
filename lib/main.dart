@@ -7,6 +7,7 @@ import 'domain/usecases/auth_usecases.dart';
 import 'domain/usecases/finalizar_partida_usecase.dart';
 import 'domain/usecases/generar_quest_usecase.dart';
 import 'domain/usecases/obtener_progreso_usecase.dart';
+import 'domain/usecases/perfil_usecases.dart';
 import 'domain/usecases/responder_encuentro_usecase.dart';
 import 'infrastructure/generation/stub_quest_generator.dart';
 import 'infrastructure/persistence/shared_preferences_sesion_repository.dart';
@@ -49,6 +50,7 @@ Future<void> main() async {
     authRepository,
   );
   final cerrarSesionUseCase = CerrarSesionUseCase(sesionRepository);
+  final actualizarPerfilUseCase = ActualizarPerfilUseCase(authRepository);
   final finalizarPartidaUseCase = FinalizarPartidaUseCase(partidaRepository);
   final obtenerProgresoUseCase = ObtenerProgresoUseCase(partidaRepository);
   // Aquí se cambia StubQuestGenerator por el adaptador real cuando exista.
@@ -63,6 +65,9 @@ Future<void> main() async {
         Provider<GenerarQuestUseCase>(create: (_) => generarQuestUseCase),
         Provider<RestaurarSesionUseCase>(create: (_) => restaurarSesionUseCase),
         Provider<CerrarSesionUseCase>(create: (_) => cerrarSesionUseCase),
+        Provider<ActualizarPerfilUseCase>(
+          create: (_) => actualizarPerfilUseCase,
+        ),
         ChangeNotifierProvider(
           create: (_) => GenerarQuestController(generarQuestUseCase),
         ),

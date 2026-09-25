@@ -51,6 +51,39 @@ class SqliteAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<bool> existeNombreUsuarioExcepto(
+    String nombreUsuario,
+    String idUsuario,
+  ) async {
+    final db = await _dbHelper.database;
+    final filas = await db.query(
+      'usuario',
+      where: 'nombre_usuario = ? AND id_usuario != ?',
+      whereArgs: [nombreUsuario, idUsuario],
+    );
+    return filas.isNotEmpty;
+  }
+
+  @override
+  Future<void> actualizar(Usuario usuario) async {
+    final db = await _dbHelper.database;
+    await db.rawUpdate(
+      '''
+      UPDATE usuario
+      SET nombre = ?, apellido = ?, nombre_usuario = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id_usuario = ?
+      ''',
+      [
+        usuario.nombre,
+        usuario.apellido,
+        usuario.nombreUsuario,
+        usuario.idUsuario,
+      ],
+    );
+  }
+
+  @override
   Future<Usuario> registrar({
     required String email,
     required String nombreUsuario,

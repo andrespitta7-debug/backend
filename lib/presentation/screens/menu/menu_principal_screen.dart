@@ -8,6 +8,7 @@ import '../auth/auth_controller.dart';
 import '../auth/login_screen.dart';
 import '../combate/combate_screen.dart';
 import '../generar/generar_quest_screen.dart';
+import '../perfil/perfil_screen.dart';
 import '../progreso/progreso_screen.dart';
 
 class MenuPrincipalScreen extends StatelessWidget {
@@ -100,6 +101,19 @@ class MenuPrincipalScreen extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (_) =>
                         ProgresoScreen(idUsuario: usuario.idUsuario),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              _MenuCard(
+                icon: Icons.person_outline,
+                accent: AppTheme.azulTexto,
+                title: 'Mi perfil',
+                subtitle: 'Consulta y edita tus datos personales.',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PerfilScreen(usuario: usuario),
                   ),
                 ),
               ),

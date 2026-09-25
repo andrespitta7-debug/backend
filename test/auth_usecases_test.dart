@@ -30,6 +30,26 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<bool> existeNombreUsuarioExcepto(
+    String nombreUsuario,
+    String idUsuario,
+  ) async {
+    return usuarios.any(
+      (usuario) =>
+          usuario.nombreUsuario == nombreUsuario &&
+          usuario.idUsuario != idUsuario,
+    );
+  }
+
+  @override
+  Future<void> actualizar(Usuario usuario) async {
+    final indice = usuarios.indexWhere(
+      (existente) => existente.idUsuario == usuario.idUsuario,
+    );
+    if (indice >= 0) usuarios[indice] = usuario;
+  }
+
+  @override
   Future<Usuario> registrar({
     required String email,
     required String nombreUsuario,

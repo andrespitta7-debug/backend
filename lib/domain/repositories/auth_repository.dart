@@ -9,6 +9,13 @@ abstract class AuthRepository {
 
   Future<bool> existeNombreUsuario(String nombreUsuario);
 
+  Future<void> actualizar(Usuario usuario);
+
+  Future<bool> existeNombreUsuarioExcepto(
+    String nombreUsuario,
+    String idUsuario,
+  );
+
   Future<Usuario> registrar({
     required String email,
     required String nombreUsuario,
