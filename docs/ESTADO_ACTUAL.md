@@ -3,7 +3,7 @@
 *Se actualiza al final de CADA sesión de trabajo (2 minutos). Va junto al Contexto Maestro al abrir un chat nuevo. Mantenerlo corto: si crece, mover lo antiguo a la bitácora.*
 
 **Última actualización:** 29-sep-2026
-**Último commit conocido:** 4e2b1ff
+**Último commit conocido:** ed0cea9
 
 ---
 
@@ -27,15 +27,20 @@
 - **Edge Function `register` completada.** Supabase Auth + creación
   de perfil en `usuario` + inicialización de `progreso_usuario`.
   Colección Postman con 6 casos en `docs/postman/`. Commit `4e2b1ff`.
+- **Edge Function `login` completada.** Autenticación con Supabase
+  Auth. Devuelve access_token, refresh_token, usuario y progreso.
+  Commit `ed0cea9`.
+- **Backend auth completo.** `register` + `login` deployados y
+  probados en Postman con 10 casos en total (6 de register + 4 de login).
 
 ## En curso
 
 - Proyecto Supabase `sysquest` en creación (29-sep): organización creada, proyecto en aprovisionamiento.
 - Revisar un cambio sin commitear en `lib/presentation/theme/app_theme.dart` (ajuste de colores de fondo, hecho por Jhony; falta confirmar el diff completo y commitear).
 - Reparto de repos `frontend`/`backend`: **resuelto verbalmente por el docente (29-sep)** — todo va al repo `backend` por ahora; se reorganiza antes de la expo, mientras se integra la interfaz.
-- **Edge Function `login` (siguiente).** Autenticación con Supabase
-  Auth, devolución de JWT.
-- Pendiente: conectar Flutter a los Edge Functions (reemplazar auth local).
+- **Conectar Flutter a los Edge Functions** (reemplazar auth local
+  por llamadas HTTP al backend).
+- Edge Function de generación de quests con IA (después).
 
 ## Decisiones cerradas (28-sep-2026, revisión HU/CU con el docente y Andrés)
 
@@ -104,6 +109,6 @@
 | 29-sep-2026 | Se confirma que 4b y 4c quedaron pusheados (`33d9877`); queda un cambio sin commitear en `app_theme.dart` por revisar | Verificación de continuidad tras trabajar con varias IAs en paralelo |
 | 29-sep-2026 | Se replantea la prioridad de la semana: de "solo esquema Supabase" a "backend mínimo end-to-end con JWT y Postman", según la Guía de Primera Review Técnica | La guía exige demo funcional front+backend+BD, capas separadas y Postman, no solo una base de datos desplegada |
 | 29-sep-2026 | El docente confirma verbalmente: todo al repo `backend` por ahora, reorganización frontend/backend antes de la expo | Evitar bloquear el trabajo mientras se define el reparto final |
-| 29-sep-2026 | Se crea el proyecto Supabase `sysquest` (organización + proyecto en aprovisionamiento) | Primer paso del backend real |
-| _(fecha)_ | _(siguiente entrada)_ | |
 | 29-sep-2026 | Edge Function `register` completada y probada. Registra en Supabase Auth + crea perfil + progreso en una llamada. 6 casos verificados en Postman. Commit `4e2b1ff`. | Avance del roadmap backend |
+| 29-sep-2026 | Edge Function `login` completada y probada. Devuelve JWT + perfil + progreso. 4 casos en Postman (200, 401, 400, 405). Commit `ed0cea9`. | Avance del roadmap backend |
+| _(fecha)_ | _(siguiente entrada)_ | |
