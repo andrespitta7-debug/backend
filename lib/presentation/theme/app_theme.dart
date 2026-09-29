@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const fondoNoche = Color(0xFF0B1020);
-  static const superficieNoche = Color(0xFF151D35);
-  static const superficieElevada = Color(0xFF202A46);
+  static const fondoNoche = Color.fromARGB(255, 0, 0, 0);
+  static const superficieNoche = Color.fromARGB(255, 36, 36, 36);
+  static const superficieElevada = Color.fromARGB(255, 37, 41, 50);
   static const doradoCritico = Color(0xFFFFC857);
   static const rojoDanio = Color(0xFFE85D5D);
   static const verdeVida = Color(0xFF52D273);
