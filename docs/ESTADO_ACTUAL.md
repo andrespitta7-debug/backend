@@ -3,7 +3,7 @@
 *Se actualiza al final de CADA sesión de trabajo (2 minutos). Va junto al Contexto Maestro al abrir un chat nuevo. Mantenerlo corto: si crece, mover lo antiguo a la bitácora.*
 
 **Última actualización:** 29-sep-2026
-**Último commit conocido:** `33d9877` — feat: eliminar cuenta en perfil (paso 4c)
+**Último commit conocido:** 4e2b1ff
 
 ---
 
@@ -24,12 +24,18 @@
 - Generación de quests con IA — base de dominio (A1: puerto + caso de uso + guardado transaccional; A2: `StubQuestGenerator` falso registrado en `main.dart`; A3: pantalla de tema libre conectada al combate).
 - Revisión conjunta con el docente y Andrés de HU/CU, arquitectura y proceso Git (28-sep): ver "Decisiones cerradas" abajo.
 - NotebookLM con fuentes cargadas (pendiente de refrescar con lo último, ver "Siguiente").
+- **Edge Function `register` completada.** Supabase Auth + creación
+  de perfil en `usuario` + inicialización de `progreso_usuario`.
+  Colección Postman con 6 casos en `docs/postman/`. Commit `4e2b1ff`.
 
 ## En curso
 
 - Proyecto Supabase `sysquest` en creación (29-sep): organización creada, proyecto en aprovisionamiento.
 - Revisar un cambio sin commitear en `lib/presentation/theme/app_theme.dart` (ajuste de colores de fondo, hecho por Jhony; falta confirmar el diff completo y commitear).
 - Reparto de repos `frontend`/`backend`: **resuelto verbalmente por el docente (29-sep)** — todo va al repo `backend` por ahora; se reorganiza antes de la expo, mientras se integra la interfaz.
+- **Edge Function `login` (siguiente).** Autenticación con Supabase
+  Auth, devolución de JWT.
+- Pendiente: conectar Flutter a los Edge Functions (reemplazar auth local).
 
 ## Decisiones cerradas (28-sep-2026, revisión HU/CU con el docente y Andrés)
 
@@ -100,3 +106,4 @@
 | 29-sep-2026 | El docente confirma verbalmente: todo al repo `backend` por ahora, reorganización frontend/backend antes de la expo | Evitar bloquear el trabajo mientras se define el reparto final |
 | 29-sep-2026 | Se crea el proyecto Supabase `sysquest` (organización + proyecto en aprovisionamiento) | Primer paso del backend real |
 | _(fecha)_ | _(siguiente entrada)_ | |
+| 29-sep-2026 | Edge Function `register` completada y probada. Registra en Supabase Auth + crea perfil + progreso en una llamada. 6 casos verificados en Postman. Commit `4e2b1ff`. | Avance del roadmap backend |
