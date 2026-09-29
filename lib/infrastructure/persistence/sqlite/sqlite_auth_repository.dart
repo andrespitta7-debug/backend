@@ -2,6 +2,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../domain/entities/usuario.dart';
 import '../../../domain/repositories/auth_repository.dart';
+import '../../../domain/usecases/password_hasher.dart';
 import 'database_helper.dart';
 
 class SqliteAuthRepository implements AuthRepository {
@@ -89,10 +90,11 @@ class SqliteAuthRepository implements AuthRepository {
     required String nombreUsuario,
     required String nombre,
     required String apellido,
-    required String passwordHash,
+    required String passwordPlano,
   }) async {
     final db = await _dbHelper.database;
     final id = _uuid.v4();
+    final passwordHash = PasswordHasher.hash(passwordPlano);
 
     await db.transaction((txn) async {
       await txn.insert('usuario', {

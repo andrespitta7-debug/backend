@@ -55,7 +55,7 @@ class FakeAuthRepository implements AuthRepository {
     required String nombreUsuario,
     required String nombre,
     required String apellido,
-    required String passwordHash,
+    required String passwordPlano,
   }) async {
     final usuario = Usuario(
       idUsuario: 'usuario-${usuarios.length + 1}',
@@ -65,7 +65,7 @@ class FakeAuthRepository implements AuthRepository {
       apellido: apellido,
     );
     usuarios.add(usuario);
-    hashes[usuario.idUsuario] = passwordHash;
+    hashes[usuario.idUsuario] = PasswordHasher.hash(passwordPlano);
     return usuario;
   }
 

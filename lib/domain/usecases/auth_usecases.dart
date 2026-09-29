@@ -72,7 +72,7 @@ class RegistrarUsuarioUseCase {
       nombreUsuario: nombreUsuarioNormalizado,
       nombre: nombreNormalizado,
       apellido: apellidoNormalizado,
-      passwordHash: PasswordHasher.hash(passwordPlano),
+      passwordPlano: passwordPlano,
     );
     await _sesionRepo?.guardarSesion(usuario.idUsuario);
     return usuario;

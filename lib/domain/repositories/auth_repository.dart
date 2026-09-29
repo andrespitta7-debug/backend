@@ -21,7 +21,7 @@ abstract class AuthRepository {
     required String nombreUsuario,
     required String nombre,
     required String apellido,
-    required String passwordHash,
+    required String passwordPlano,
   });
 
   /// Devuelve el Usuario si el email y el hash coinciden; null si no.

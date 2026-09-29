@@ -48,7 +48,7 @@ class FakePerfilAuthRepository implements AuthRepository {
     required String nombreUsuario,
     required String nombre,
     required String apellido,
-    required String passwordHash,
+    required String passwordPlano,
   }) async {
     throw UnimplementedError();
   }
