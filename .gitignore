@@ -50,3 +50,8 @@ app.*.map.json
 # Flutter generated files (no versionar)
 macos/Flutter/GeneratedPluginRegistrant.swift
 
+
+# Environment variables
+.env
+.env.local
+.env.*.local
