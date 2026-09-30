@@ -155,7 +155,7 @@ class _CombateScreenState extends State<CombateScreen>
             animation: _sacudidaPantalla,
             builder: (context, child) {
               final desplazamiento =
-                  math.sin(_sacudidaPantalla.value * math.pi * 8) * 4;
+                  math.sin(_sacudidaPantalla.value * math.pi * 12) * 8;
               return Transform.translate(
                 offset: Offset(desplazamiento, 0),
                 child: child,
@@ -341,8 +341,8 @@ class _EnemigoCard extends StatelessWidget {
                 AppTheme.doradoCritico.withValues(alpha: 0.25),
                 brillo,
               ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: borde, width: esJefe ? 2 : 1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: borde, width: esJefe ? 3 : 2),
               boxShadow: esJefe
                   ? [
                       BoxShadow(
@@ -494,8 +494,9 @@ class _BarraVida extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: progreso, end: progreso),
-            duration: const Duration(milliseconds: 450),
+            tween: Tween(end: progreso),
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutCubic,
             builder: (context, valorAnimado, _) => LinearProgressIndicator(
               minHeight: 12,
               value: valorAnimado,
@@ -522,17 +523,41 @@ class _OpcionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 60,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 60),
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.superficieNoche,
           foregroundColor: AppTheme.azulTexto,
-          side: const BorderSide(color: AppTheme.superficieElevada),
+          side: const BorderSide(color: AppTheme.superficieElevada, width: 2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
           alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
-        child: Text('$letra  $texto'),
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '$letra  ',
+                style: const TextStyle(
+                  fontFamily: 'PressStart2P',
+                  fontSize: 12,
+                  color: AppTheme.doradoCritico,
+                ),
+              ),
+              TextSpan(
+                text: texto,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -552,7 +577,8 @@ class _MensajeTurno extends StatelessWidget {
         textAlign: TextAlign.center,
         style: TextStyle(
           color: esDanio ? AppTheme.rojoDanio : AppTheme.doradoCritico,
-          fontWeight: FontWeight.bold,
+          fontFamily: 'PressStart2P',
+          fontSize: 12,
         ),
       ),
     );
@@ -661,30 +687,64 @@ class _EtiquetaJefe extends StatelessWidget {
   }
 }
 
-class _NumeroDanio extends StatelessWidget {
+class _NumeroDanio extends StatefulWidget {
   final int valor;
   final Color color;
 
   const _NumeroDanio({super.key, required this.valor, required this.color});
 
   @override
+  State<_NumeroDanio> createState() => _NumeroDanioState();
+}
+
+class _NumeroDanioState extends State<_NumeroDanio> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacidad;
+  late final Animation<double> _desplazamiento;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _opacidad = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 15), 
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),          
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 25), 
+    ]).animate(_controller);
+
+    _desplazamiento = Tween<double>(begin: 0.0, end: -40.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 750),
-      builder: (context, progreso, child) => Opacity(
-        opacity: 1 - progreso,
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => Opacity(
+        opacity: _opacidad.value,
         child: Transform.translate(
-          offset: Offset(0, -28 * progreso),
+          offset: Offset(0, _desplazamiento.value),
           child: child,
         ),
       ),
       child: Text(
-        '-$valor',
+        '-${widget.valor}',
         style: const TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w900,
-        ).copyWith(color: color),
+          fontFamily: 'PressStart2P',
+          fontSize: 16,
+        ).copyWith(color: widget.color),
       ),
     );
   }

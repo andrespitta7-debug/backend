@@ -36,13 +36,13 @@ class AppTheme {
       textTheme: baseTextTheme.copyWith(
         headlineSmall: baseTextTheme.headlineSmall?.copyWith(
           color: doradoCritico,
-          fontFamily: 'monospace',
-          fontWeight: FontWeight.bold,
+          fontFamily: 'PressStart2P',
+          fontSize: 18,
         ),
         titleLarge: baseTextTheme.titleLarge?.copyWith(
           color: azulTexto,
-          fontFamily: 'monospace',
-          fontWeight: FontWeight.bold,
+          fontFamily: 'PressStart2P',
+          fontSize: 14,
         ),
         titleMedium: baseTextTheme.titleMedium?.copyWith(
           color: azulTexto,
@@ -50,6 +50,11 @@ class AppTheme {
         ),
         bodyLarge: baseTextTheme.bodyLarge?.copyWith(color: azulTexto),
         bodyMedium: baseTextTheme.bodyMedium?.copyWith(color: azulTexto),
+        labelLarge: baseTextTheme.labelLarge?.copyWith(
+          color: azulTexto,
+          fontFamily: 'PressStart2P',
+          fontSize: 10,
+        ),
       ),
       cardTheme: CardThemeData(
         color: superficieNoche,
@@ -71,7 +76,10 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.bold),
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
