@@ -1,7 +1,7 @@
 import '../entities/usuario.dart';
 import '../repositories/auth_repository.dart';
 import '../repositories/sesion_repository.dart';
-import 'password_hasher.dart';
+
 
 class RegistroInvalidoException implements Exception {
   final String mensaje;
@@ -58,13 +58,18 @@ class RegistrarUsuarioUseCase {
       );
     }
 
-    if (await _repo.existeEmail(emailNormalizado)) {
-      throw RegistroInvalidoException('El correo ya está registrado.');
-    }
-    if (await _repo.existeNombreUsuario(nombreUsuarioNormalizado)) {
-      throw RegistroInvalidoException(
-        'El nombre de usuario ya está registrado.',
-      );
+    try {
+      if (await _repo.existeEmail(emailNormalizado)) {
+        throw RegistroInvalidoException('El correo ya está registrado.');
+      }
+      if (await _repo.existeNombreUsuario(nombreUsuarioNormalizado)) {
+        throw RegistroInvalidoException(
+          'El nombre de usuario ya está registrado.',
+        );
+      }
+    } on UnimplementedError {
+      // El backend HTTP actual no tiene estos endpoints implementados aún.
+      // Permitimos que continúe y delegamos la validación de duplicados al backend.
     }
 
     final usuario = await _repo.registrar(
@@ -92,7 +97,7 @@ class IniciarSesionUseCase {
   }) async {
     final usuario = await _repo.autenticar(
       email.trim().toLowerCase(),
-      PasswordHasher.hash(passwordPlano),
+      passwordPlano,
     );
     if (usuario == null) throw CredencialesInvalidasException();
     if (mantenerSesion && _sesionRepo != null) {

@@ -42,11 +42,11 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Usuario?> autenticar(String email, String passwordHash) async {
+  Future<Usuario?> autenticar(String email, String passwordPlano) async {
     try {
       final result = await _client.login(
         email: email,
-        password: passwordHash,
+        password: passwordPlano,
       );
 
       await _tokenRepo.guardarTokens(
@@ -93,7 +93,7 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> cambiarPassword(String idUsuario, String nuevoHash) async {
+  Future<void> cambiarPassword(String idUsuario, String nuevoPasswordPlano) async {
     throw UnimplementedError(_mensajeNoImplementado);
   }
 

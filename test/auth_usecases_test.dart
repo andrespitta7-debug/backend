@@ -70,9 +70,10 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Usuario?> autenticar(String email, String passwordHash) async {
+  Future<Usuario?> autenticar(String email, String passwordPlano) async {
+    final hash = PasswordHasher.hash(passwordPlano);
     for (final usuario in usuarios) {
-      if (usuario.email == email && hashes[usuario.idUsuario] == passwordHash) {
+      if (usuario.email == email && hashes[usuario.idUsuario] == hash) {
         ultimoEmailConsultado = email;
         return usuario;
       }
@@ -82,8 +83,8 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> cambiarPassword(String idUsuario, String nuevoHash) async {
-    hashes[idUsuario] = nuevoHash;
+  Future<void> cambiarPassword(String idUsuario, String nuevoPasswordPlano) async {
+    hashes[idUsuario] = PasswordHasher.hash(nuevoPasswordPlano);
   }
 
   @override

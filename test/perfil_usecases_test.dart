@@ -54,17 +54,18 @@ class FakePerfilAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Usuario?> autenticar(String email, String passwordHash) async {
-    if (passwordHashValido != null && passwordHash == passwordHashValido) {
+  Future<Usuario?> autenticar(String email, String passwordPlano) async {
+    final hash = PasswordHasher.hash(passwordPlano);
+    if (passwordHashValido != null && hash == passwordHashValido) {
       return usuarioInicial;
     }
     return null;
   }
 
   @override
-  Future<void> cambiarPassword(String idUsuario, String nuevoHash) async {
+  Future<void> cambiarPassword(String idUsuario, String nuevoPasswordPlano) async {
     idUsuarioPasswordCambiado = idUsuario;
-    nuevoHashGuardado = nuevoHash;
+    nuevoHashGuardado = PasswordHasher.hash(nuevoPasswordPlano);
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
 
 import 'domain/entities/usuario.dart';
 import 'domain/repositories/auth_repository.dart';
@@ -29,7 +30,7 @@ import 'presentation/screens/menu/menu_principal_screen.dart';
 import 'presentation/screens/progreso/progreso_controller.dart';
 import 'presentation/theme/app_theme.dart';
 
-const bool usarBackendRemoto = true; // cambiar a true para probar el backend real
+const bool usarBackendRemoto = false; // cambiar a true para probar el backend real
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,7 +61,8 @@ Future<void> main() async {
       baseUrl: const String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://jctulgfdweeurqbmugot.supabase.co'),
       anonKey: anonKey,
     );
-    authRepository = HttpAuthRepository(authClient, tokenRepository);
+    final remoteRepo = HttpAuthRepository(authClient, tokenRepository);
+    authRepository = remoteRepo;
   } else {
     // Flujo clásico con SQLite (usarBackendRemoto = false)
     authRepository = SqliteAuthRepository(dbHelper);
@@ -128,6 +130,8 @@ Future<void> main() async {
     ),
   );
 }
+
+
 
 class SysQuestApp extends StatelessWidget {
   const SysQuestApp({super.key});

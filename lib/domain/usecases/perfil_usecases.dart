@@ -1,7 +1,7 @@
 import '../entities/usuario.dart';
 import '../repositories/auth_repository.dart';
 import 'auth_usecases.dart';
-import 'password_hasher.dart';
+
 
 class ActualizarPerfilUseCase {
   final AuthRepository _repo;
@@ -71,7 +71,7 @@ class CambiarPasswordUseCase {
   }) async {
     final usuarioAutenticado = await _repo.autenticar(
       usuario.email,
-      PasswordHasher.hash(passwordActual),
+      passwordActual,
     );
     if (usuarioAutenticado == null) {
       throw RegistroInvalidoException('La contraseña actual es incorrecta.');
@@ -97,7 +97,7 @@ class CambiarPasswordUseCase {
 
     await _repo.cambiarPassword(
       usuario.idUsuario,
-      PasswordHasher.hash(passwordNueva),
+      passwordNueva,
     );
   }
 }
@@ -113,7 +113,7 @@ class EliminarCuentaUseCase {
   }) async {
     final usuarioAutenticado = await _repo.autenticar(
       usuario.email,
-      PasswordHasher.hash(passwordActual),
+      passwordActual,
     );
     if (usuarioAutenticado == null) {
       throw RegistroInvalidoException('La contraseña es incorrecta.');

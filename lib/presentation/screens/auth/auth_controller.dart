@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../domain/entities/usuario.dart';
 import '../../../domain/usecases/auth_usecases.dart';
+import '../../../infrastructure/api/api_exception.dart';
 
 class AuthController extends ChangeNotifier {
   final RegistrarUsuarioUseCase _registrarUseCase;
@@ -34,10 +35,14 @@ class AuthController extends ChangeNotifier {
         passwordPlano: password,
       );
       return true;
+    } on RegistroInvalidoException catch (e) {
+      error = e.mensaje;
+      return false;
+    } on ApiException catch (e) {
+      error = e.mensaje;
+      return false;
     } catch (e) {
-      error = e is RegistroInvalidoException
-          ? e.mensaje
-          : 'Error al registrar.';
+      error = 'Error al registrar.';
       return false;
     } finally {
       cargando = false;
@@ -60,8 +65,14 @@ class AuthController extends ChangeNotifier {
         mantenerSesion: mantenerSesion,
       );
       return true;
-    } catch (_) {
+    } on CredencialesInvalidasException {
       error = 'Correo o contraseña incorrectos.';
+      return false;
+    } on ApiException catch (e) {
+      error = e.mensaje;
+      return false;
+    } catch (_) {
+      error = 'Ocurrió un error inesperado al iniciar sesión.';
       return false;
     } finally {
       cargando = false;
