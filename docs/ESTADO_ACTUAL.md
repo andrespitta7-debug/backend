@@ -32,6 +32,8 @@
   Commit `ed0cea9`.
 - **Backend auth completo.** `register` + `login` deployados y
   probados en Postman con 10 casos en total (6 de register + 4 de login).
+- **Ajustes Visuales Combate:** Integración de fuente "Press Start 2P" en títulos/botones, números de daño flotantes animados (fade-in, subida y fade-out), shake mejorado y barras de vida dinámicas. Textos largos mantienen la fuente legible.
+- **Bugfix (Auth):** Arreglado contrato de `AuthRepository` para enviar contraseñas en plano, delegando el Hash a `SqliteAuthRepository` localmente. Esto solucionó el fallo de login remoto con Supabase (que requiere plaintext). Todos los tests pasaron exitosamente.
 
 ## En curso
 
@@ -111,4 +113,5 @@
 | 29-sep-2026 | El docente confirma verbalmente: todo al repo `backend` por ahora, reorganización frontend/backend antes de la expo | Evitar bloquear el trabajo mientras se define el reparto final |
 | 29-sep-2026 | Edge Function `register` completada y probada. Registra en Supabase Auth + crea perfil + progreso en una llamada. 6 casos verificados en Postman. Commit `4e2b1ff`. | Avance del roadmap backend |
 | 29-sep-2026 | Edge Function `login` completada y probada. Devuelve JWT + perfil + progreso. 4 casos en Postman (200, 401, 400, 405). Commit `ed0cea9`. | Avance del roadmap backend |
+| 30-sep-2026 | Refinamiento visual (CombateScreen con estilo retro y animaciones) y Fix de AuthRepository (cambio de contrato a contraseñas en plano para soportar login con Supabase nativamente sin romper SQLite). | Mejorar inmersión de usuario y solucionar bug de 'contraseña incorrecta' por culpa del hash a nivel Dominio. |
 | _(fecha)_ | _(siguiente entrada)_ | |
