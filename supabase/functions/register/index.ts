@@ -154,6 +154,28 @@ Deno.serve(async (req: Request) => {
     return errorResponse('No se pudo completar el registro, intenta de nuevo.', 500);
   }
 
+  // 4b. Crear fila en `personaje` con valores vacíos por defecto
+  const { error: errorPersonaje } = await supabaseAdmin
+    .from('personaje')
+    .insert({
+      id_usuario: authUser.id,
+      nombre: null,
+      genero: null,
+      skin: null,
+    });
+
+  if (errorPersonaje) {
+    // Rollback de compensación: cascada elimina también el registro de `usuario`
+    try {
+      await supabaseAdmin.auth.admin.deleteUser(authUser.id);
+    } catch (deleteError) {
+      console.error('Error al limpiar usuario en Auth tras fallo en personaje:', deleteError);
+    }
+
+    console.error('Error al insertar en personaje:', errorPersonaje.message);
+    return errorResponse('No se pudo completar el registro, intenta de nuevo.', 500);
+  }
+
   // 5. Iniciar sesión automáticamente con el cliente anon para generar el JWT
   const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {

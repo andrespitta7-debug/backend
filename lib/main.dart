@@ -29,7 +29,7 @@ import 'presentation/screens/menu/menu_principal_screen.dart';
 import 'presentation/screens/progreso/progreso_controller.dart';
 import 'presentation/theme/app_theme.dart';
 
-const bool usarBackendRemoto = false; // cambiar a true para probar el backend real
+const bool usarBackendRemoto = true; // cambiar a true para probar el backend real
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
