@@ -5,9 +5,45 @@ import 'package:http/testing.dart';
 
 import 'package:sysquest_app/domain/entities/usuario.dart';
 import 'package:sysquest_app/domain/repositories/auth_repository.dart';
+import 'package:sysquest_app/domain/repositories/token_repository.dart';
 import 'package:sysquest_app/infrastructure/api/api_exception.dart';
 import 'package:sysquest_app/infrastructure/api/auth_api_client.dart';
 import 'package:sysquest_app/infrastructure/api/http_auth_repository.dart';
+
+class FakeTokenRepository implements TokenRepository {
+  bool guardarTokensLlamado = false;
+  String? accessTokenGuardado;
+  String? refreshTokenGuardado;
+  int? expiresInGuardado;
+  final bool lanzarError;
+
+  FakeTokenRepository({this.lanzarError = false});
+
+  @override
+  Future<void> guardarTokens({
+    required String accessToken,
+    required String refreshToken,
+    required int expiresIn,
+  }) async {
+    if (lanzarError) throw Exception('Error simulado guardando tokens');
+    guardarTokensLlamado = true;
+    accessTokenGuardado = accessToken;
+    refreshTokenGuardado = refreshToken;
+    expiresInGuardado = expiresIn;
+  }
+
+  @override
+  Future<String?> obtenerAccessToken() async => accessTokenGuardado;
+
+  @override
+  Future<String?> obtenerRefreshToken() async => refreshTokenGuardado;
+
+  @override
+  Future<bool> tokenExpirado() async => false;
+
+  @override
+  Future<void> limpiarTokens() async {}
+}
 
 void main() {
   const baseUrl = 'https://jctulgfdweeurqbmugot.supabase.co';
@@ -42,13 +78,13 @@ void main() {
         anonKey: anonKey,
         httpClient: MockClient((_) async => http.Response('{}', 200)),
       );
-      final repo = HttpAuthRepository(client);
+      final repo = HttpAuthRepository(client, FakeTokenRepository());
 
       expect(repo, isA<AuthRepository>());
     });
 
     group('registrar', () {
-      test('devuelve Usuario cuando el registro es exitoso', () async {
+      test('devuelve Usuario y guarda tokens cuando el registro es exitoso', () async {
         final mockClient = MockClient((request) async {
           expect(request.method, equals('POST'));
           expect(request.url.path, contains('/register'));
@@ -60,7 +96,8 @@ void main() {
           anonKey: anonKey,
           httpClient: mockClient,
         );
-        final repo = HttpAuthRepository(client);
+        final tokenRepo = FakeTokenRepository();
+        final repo = HttpAuthRepository(client, tokenRepo);
 
         final usuario = await repo.registrar(
           email: 'estudiante@udec.edu.co',
@@ -75,6 +112,36 @@ void main() {
         expect(usuario.nombreUsuario, equals('estudiante_dev'));
         expect(usuario.nombre, equals('Estudiante'));
         expect(usuario.apellido, equals('Udec'));
+
+        expect(tokenRepo.guardarTokensLlamado, isTrue);
+        expect(tokenRepo.accessTokenGuardado, equals('jwt_token_123'));
+        expect(tokenRepo.refreshTokenGuardado, equals('jwt_refresh_456'));
+        expect(tokenRepo.expiresInGuardado, equals(3600));
+      });
+
+      test('propaga Exception si el guardado de tokens falla tras un registro HTTP exitoso', () async {
+        final mockClient = MockClient((request) async {
+          return http.Response(sampleResponseJson, 201);
+        });
+
+        final client = AuthApiClient(
+          baseUrl: baseUrl,
+          anonKey: anonKey,
+          httpClient: mockClient,
+        );
+        final tokenRepo = FakeTokenRepository(lanzarError: true);
+        final repo = HttpAuthRepository(client, tokenRepo);
+
+        expect(
+          () => repo.registrar(
+            email: 'estudiante@udec.edu.co',
+            nombreUsuario: 'estudiante_dev',
+            nombre: 'Estudiante',
+            apellido: 'Udec',
+            passwordPlano: 'Password123',
+          ),
+          throwsA(isA<Exception>()),
+        );
       });
 
       test('propaga ApiException cuando el registro falla', () async {
@@ -90,7 +157,7 @@ void main() {
           anonKey: anonKey,
           httpClient: mockClient,
         );
-        final repo = HttpAuthRepository(client);
+        final repo = HttpAuthRepository(client, FakeTokenRepository());
 
         expect(
           () => repo.registrar(
@@ -110,7 +177,7 @@ void main() {
     });
 
     group('autenticar', () {
-      test('devuelve Usuario cuando las credenciales son correctas', () async {
+      test('devuelve Usuario y guarda tokens cuando las credenciales son correctas', () async {
         final mockClient = MockClient((request) async {
           expect(request.method, equals('POST'));
           expect(request.url.path, contains('/login'));
@@ -122,7 +189,8 @@ void main() {
           anonKey: anonKey,
           httpClient: mockClient,
         );
-        final repo = HttpAuthRepository(client);
+        final tokenRepo = FakeTokenRepository();
+        final repo = HttpAuthRepository(client, tokenRepo);
 
         final usuario = await repo.autenticar(
           'estudiante@udec.edu.co',
@@ -132,6 +200,30 @@ void main() {
         expect(usuario, isNotNull);
         expect(usuario!.idUsuario, equals('uuid-123'));
         expect(usuario.email, equals('estudiante@udec.edu.co'));
+
+        expect(tokenRepo.guardarTokensLlamado, isTrue);
+        expect(tokenRepo.accessTokenGuardado, equals('jwt_token_123'));
+        expect(tokenRepo.refreshTokenGuardado, equals('jwt_refresh_456'));
+        expect(tokenRepo.expiresInGuardado, equals(3600));
+      });
+
+      test('propaga Exception si el guardado de tokens falla tras un login HTTP exitoso', () async {
+        final mockClient = MockClient((request) async {
+          return http.Response(sampleResponseJson, 200);
+        });
+
+        final client = AuthApiClient(
+          baseUrl: baseUrl,
+          anonKey: anonKey,
+          httpClient: mockClient,
+        );
+        final tokenRepo = FakeTokenRepository(lanzarError: true);
+        final repo = HttpAuthRepository(client, tokenRepo);
+
+        expect(
+          () => repo.autenticar('estudiante@udec.edu.co', 'Password123'),
+          throwsA(isA<Exception>()),
+        );
       });
 
       test('devuelve null cuando las credenciales son incorrectas (401)', () async {
@@ -147,7 +239,7 @@ void main() {
           anonKey: anonKey,
           httpClient: mockClient,
         );
-        final repo = HttpAuthRepository(client);
+        final repo = HttpAuthRepository(client, FakeTokenRepository());
 
         final usuario = await repo.autenticar(
           'estudiante@udec.edu.co',
@@ -170,7 +262,7 @@ void main() {
           anonKey: anonKey,
           httpClient: mockClient,
         );
-        final repo = HttpAuthRepository(client);
+        final repo = HttpAuthRepository(client, FakeTokenRepository());
 
         expect(
           () => repo.autenticar('estudiante@udec.edu.co', 'Password123'),
@@ -191,7 +283,7 @@ void main() {
           anonKey: anonKey,
           httpClient: MockClient((_) async => http.Response('{}', 200)),
         );
-        repo = HttpAuthRepository(client);
+        repo = HttpAuthRepository(client, FakeTokenRepository());
       });
 
       test('obtenerPorId lanza UnimplementedError', () {

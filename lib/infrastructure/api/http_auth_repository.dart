@@ -1,5 +1,6 @@
 import '../../domain/entities/usuario.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../domain/repositories/token_repository.dart';
 import 'api_exception.dart';
 import 'auth_api_client.dart';
 
@@ -7,8 +8,9 @@ import 'auth_api_client.dart';
 /// el backend de Supabase mediante [AuthApiClient].
 class HttpAuthRepository implements AuthRepository {
   final AuthApiClient _client;
+  final TokenRepository _tokenRepo;
 
-  HttpAuthRepository(this._client);
+  HttpAuthRepository(this._client, this._tokenRepo);
 
   static const _mensajeNoImplementado =
       'Este método aún no está implementado en el backend. '
@@ -29,6 +31,13 @@ class HttpAuthRepository implements AuthRepository {
       apellido: apellido,
       nombreUsuario: nombreUsuario,
     );
+
+    await _tokenRepo.guardarTokens(
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      expiresIn: result.expiresIn,
+    );
+
     return result.usuario;
   }
 
@@ -39,6 +48,13 @@ class HttpAuthRepository implements AuthRepository {
         email: email,
         password: passwordHash,
       );
+
+      await _tokenRepo.guardarTokens(
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        expiresIn: result.expiresIn,
+      );
+
       return result.usuario;
     } on ApiException catch (e) {
       if (e.statusCode == 401) {

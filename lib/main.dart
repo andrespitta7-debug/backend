@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'domain/entities/usuario.dart';
+import 'domain/repositories/auth_repository.dart';
 import 'domain/repositories/token_repository.dart';
 import 'domain/usecases/auth_usecases.dart';
 import 'domain/usecases/finalizar_partida_usecase.dart';
@@ -11,6 +12,8 @@ import 'domain/usecases/generar_quest_usecase.dart';
 import 'domain/usecases/obtener_progreso_usecase.dart';
 import 'domain/usecases/perfil_usecases.dart';
 import 'domain/usecases/responder_encuentro_usecase.dart';
+import 'infrastructure/api/auth_api_client.dart';
+import 'infrastructure/api/http_auth_repository.dart';
 import 'infrastructure/generation/stub_quest_generator.dart';
 import 'infrastructure/persistence/secure_token_repository.dart';
 import 'infrastructure/persistence/shared_preferences_sesion_repository.dart';
@@ -26,6 +29,8 @@ import 'presentation/screens/menu/menu_principal_screen.dart';
 import 'presentation/screens/progreso/progreso_controller.dart';
 import 'presentation/theme/app_theme.dart';
 
+const bool usarBackendRemoto = false; // cambiar a true para probar el backend real
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -34,13 +39,32 @@ Future<void> main() async {
   await dbHelper.insertarDatosDePrueba();
 
   final questRepository = SqliteQuestRepository(dbHelper);
-  final authRepository = SqliteAuthRepository(dbHelper);
   final partidaRepository = SqlitePartidaRepository(dbHelper);
   final preferences = await SharedPreferences.getInstance();
   final sesionRepository = SharedPreferencesSesionRepository(preferences);
 
   const secureStorage = FlutterSecureStorage();
   final tokenRepository = SecureTokenRepository(secureStorage);
+
+  final AuthRepository authRepository;
+  if (usarBackendRemoto) {
+    // Usamos el cliente HTTP y el HttpAuthRepository
+    const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
+    if (anonKey.isEmpty) {
+      throw StateError(
+        'Falta configurar la clave anónima de Supabase. '
+        'Por favor, pase la clave al ejecutar: --dart-define=SUPABASE_ANON_KEY=tu_clave',
+      );
+    }
+    final authClient = AuthApiClient(
+      baseUrl: const String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://jctulgfdweeurqbmugot.supabase.co'),
+      anonKey: anonKey,
+    );
+    authRepository = HttpAuthRepository(authClient, tokenRepository);
+  } else {
+    // Flujo clásico con SQLite (usarBackendRemoto = false)
+    authRepository = SqliteAuthRepository(dbHelper);
+  }
 
   final responderUseCase = ResponderEncuentroUseCase();
   final registrarUseCase = RegistrarUsuarioUseCase(
