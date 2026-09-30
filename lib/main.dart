@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'domain/entities/usuario.dart';
+import 'domain/repositories/token_repository.dart';
 import 'domain/usecases/auth_usecases.dart';
 import 'domain/usecases/finalizar_partida_usecase.dart';
 import 'domain/usecases/generar_quest_usecase.dart';
@@ -10,6 +12,7 @@ import 'domain/usecases/obtener_progreso_usecase.dart';
 import 'domain/usecases/perfil_usecases.dart';
 import 'domain/usecases/responder_encuentro_usecase.dart';
 import 'infrastructure/generation/stub_quest_generator.dart';
+import 'infrastructure/persistence/secure_token_repository.dart';
 import 'infrastructure/persistence/shared_preferences_sesion_repository.dart';
 import 'infrastructure/persistence/sqlite/database_helper.dart';
 import 'infrastructure/persistence/sqlite/sqlite_auth_repository.dart';
@@ -35,6 +38,9 @@ Future<void> main() async {
   final partidaRepository = SqlitePartidaRepository(dbHelper);
   final preferences = await SharedPreferences.getInstance();
   final sesionRepository = SharedPreferencesSesionRepository(preferences);
+
+  const secureStorage = FlutterSecureStorage();
+  final tokenRepository = SecureTokenRepository(secureStorage);
 
   final responderUseCase = ResponderEncuentroUseCase();
   final registrarUseCase = RegistrarUsuarioUseCase(
@@ -64,6 +70,7 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
+        Provider<TokenRepository>(create: (_) => tokenRepository),
         Provider<GenerarQuestUseCase>(create: (_) => generarQuestUseCase),
         Provider<RestaurarSesionUseCase>(create: (_) => restaurarSesionUseCase),
         Provider<CerrarSesionUseCase>(create: (_) => cerrarSesionUseCase),
