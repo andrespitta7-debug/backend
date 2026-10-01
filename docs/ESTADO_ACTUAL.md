@@ -4,7 +4,8 @@ _Se actualiza al final de CADA sesión de trabajo (2 minutos). Va junto al
 Contexto Maestro al abrir un chat nuevo. Mantenerlo corto: si crece, mover lo
 antiguo a la bitácora._
 
-**Última actualización:** 01-oct-2026 **Último commit conocido:** 791ea1a
+**Último commit conocido:** `24f2e65` — feat(backend): timeout 60s + logs de
+diagnostico en validator
 
 ---
 
@@ -69,6 +70,11 @@ antiguo a la bitácora._
     respuesta correcta es >2× más larga). Combate por turnos sin spam (botones
     deshabilitados ~700ms mientras se procesa el turno). Orden aleatorio de
     encuentros normales (el jefe siempre va al final).
+    - **Sub-paso B.2 — Run extendida backend.** Edge Function
+      `generar-quest-completa` con mega-prompt (quest + pool narrativo + 9
+      preguntas extra). Caché narrativa por tema+categoría+dificultad. Timeout
+      configurable (10s quest normal, 60s run completa). RPC
+      `crear_run_completa` transaccional. Commit `24f2e65`.
 
 ## En curso
 
@@ -83,6 +89,8 @@ antiguo a la bitácora._
 - **Conectar Flutter a los Edge Functions** (reemplazar auth local por llamadas
   HTTP al backend).
 - Edge Function de generación de quests con IA (después).
+- **Sub-paso B.3 (siguiente):** Reescritura del `CombateController` para
+  soportar runs extendidas con narrativa procedural.
 
 ## Decisiones cerradas (28-sep-2026, revisión HU/CU con el docente y Andrés)
 
@@ -207,4 +215,10 @@ y el docente: `feature/SYSQ-XX` → `dev` → `preprod` → `main`. |
 | 01-oct-2026 | Mejoras de gameplay implementadas: opciones balanceadas (prompt
 reforzado + validación V9), combate sin spam (bloqueo de botones durante turno),
 orden aleatorio de encuentros normales (jefe siempre al final). 114 tests
-pasando. Commits `<hash1>` y `<hash2>`. | Mejora de experiencia de juego |
+pasando. Commits `<hash1>` y `<hash2>`. | Mejora de experiencia de juego | |
+01-oct-2026 | Sub-paso B.2 completado. Edge Function `generar-quest-completa`
+deployada y probada: genera quest + pool narrativo (32 variantes) + 9 preguntas
+extra en 1 llamada a Groq. Caché narrativa por (tema, categoria, dificultad)
+funcionando. Timeout configurable por llamada (60s para run completa). RPC
+`crear_run_completa` aplicada. Commit `24f2e65`. | Mecánica de run extendida con
+narrativa procedural |
