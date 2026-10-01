@@ -181,5 +181,138 @@ void main() {
       expect(tiposRecorridos.sublist(0, 3).every((tipo) => tipo == 'normal'), isTrue);
       expect(idsRecorridos.sublist(0, 3).toSet(), equals({'norm-A', 'norm-B', 'norm-C'}));
     });
+
+    test('al fallar pregunta con calidad 0 carga pregunta extra para el mismo enemigo', () async {
+      final opcionFalla = OpcionEncuentro(
+        idOpcion: 'op-falla',
+        idEncuentro: 'enc-1',
+        letra: 'B',
+        texto: 'Opcion incorrecta',
+        calidad: 0,
+      );
+      final encuentroOriginal = Encuentro(
+        idEncuentro: 'enc-1',
+        idQuest: 'q-1',
+        numero: 1,
+        pregunta: 'Pregunta Inicial',
+        dificultad: 'facil',
+        tipoEncuentro: 'normal',
+        vidaEnemigo: 50,
+        opciones: [opcionFalla],
+      );
+      final preguntaExtra = Encuentro(
+        idEncuentro: 'extra-1',
+        idQuest: 'q-1',
+        numero: 4,
+        pregunta: 'Pregunta Extra 1',
+        dificultad: 'facil',
+        tipoEncuentro: 'normal',
+        vidaEnemigo: 50,
+        opciones: [opcionCritica],
+      );
+
+      final repoQuest = FakeQuestRepository([encuentroOriginal, encuentroJefe]);
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(FakePartidaRepository()),
+        duracionPausaTurno: Duration.zero,
+      );
+
+      await controller.cargarQuest(
+        'q-1',
+        'u-1',
+        preguntasExtra: [preguntaExtra],
+      );
+
+      expect(controller.encuentroActual!.pregunta, equals('Pregunta Inicial'));
+      final vidaJugadorInicial = controller.vidaJugador;
+
+      // Jugador falla
+      await controller.elegirOpcion(opcionFalla);
+
+      // El enemigo contraatacó
+      expect(controller.vidaJugador, lessThan(vidaJugadorInicial));
+      // El mismo enemigo sigue vivo
+      expect(controller.vidaEnemigo, equals(50));
+      expect(controller.encuentroSuperado, isFalse);
+      // La pregunta fue reemplazada por la pregunta extra
+      expect(controller.encuentroActual!.pregunta, equals('Pregunta Extra 1'));
+      expect(controller.encuentroActual!.numero, equals(1)); // Conserva número de enemigo
+    });
+
+    test('al derrotar a un enemigo avanza automaticamente al siguiente y consume narrativa', () async {
+      final repoQuest = FakeQuestRepository([encuentroNormal1, encuentroJefe]);
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(FakePartidaRepository()),
+        duracionPausaTurno: Duration.zero,
+      );
+
+      final poolNarrativo = {
+        'jefe_avistado': ['El jefe final aparece imponente en el horizonte.'],
+      };
+
+      await controller.cargarQuest(
+        'q-1',
+        'u-1',
+        poolNarrativo: poolNarrativo,
+      );
+
+      expect(controller.encuentroActual!.tipoEncuentro, equals('normal'));
+      expect(controller.vidaEnemigo, equals(50));
+
+      // Asestamos dos golpes de 25 (calidad 2)
+      await controller.elegirOpcion(opcionCritica);
+      expect(controller.vidaEnemigo, equals(25));
+
+      await controller.elegirOpcion(opcionCritica);
+
+      // Enemigo derrotado -> transiciona al siguiente (el jefe)
+      expect(controller.encuentroSuperado, isTrue);
+      expect(controller.encuentroActual!.tipoEncuentro, equals('jefe'));
+      expect(controller.vidaEnemigo, equals(80));
+      expect(controller.mensajeNarrativoActual, equals('El jefe final aparece imponente en el horizonte.'));
+      expect(controller.combateTerminado, isFalse);
+    });
+
+    test('pausarCombate, continuarCombate y retirarse funcionan correctamente', () async {
+      final repoQuest = FakeQuestRepository([encuentroNormal1]);
+      final repoPartida = FakePartidaRepository();
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(repoPartida),
+        duracionPausaTurno: Duration.zero,
+      );
+
+      final poolNarrativo = {
+        'retirada': ['Te retiras tácticamente para luchar otro día.'],
+      };
+
+      await controller.cargarQuest(
+        'q-1',
+        'u-1',
+        poolNarrativo: poolNarrativo,
+      );
+
+      expect(controller.enPausa, isFalse);
+
+      controller.pausarCombate();
+      expect(controller.enPausa, isTrue);
+
+      controller.continuarCombate();
+      expect(controller.enPausa, isFalse);
+
+      controller.pausarCombate();
+      await controller.retirarse();
+
+      expect(controller.enPausa, isFalse);
+      expect(controller.combateTerminado, isTrue);
+      expect(controller.jugadorGano, isFalse);
+      expect(controller.mensajeNarrativoActual, equals('Te retiras tácticamente para luchar otro día.'));
+    });
   });
 }
+

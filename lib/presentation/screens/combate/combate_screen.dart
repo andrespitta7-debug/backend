@@ -132,6 +132,11 @@ class _CombateScreenState extends State<CombateScreen>
       appBar: AppBar(
         title: const Text('SysQuest'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.pause),
+            tooltip: 'Pausa',
+            onPressed: () => _mostrarMenuPausa(context),
+          ),
           TextButton.icon(
             onPressed: _cerrarSesion,
             icon: const Icon(Icons.logout),
@@ -178,6 +183,14 @@ class _CombateScreenState extends State<CombateScreen>
               onContinuar: controller.continuarSiguienteEncuentro,
               onVolverAJugar: _volverAJugar,
               onVerProgreso: _verProgreso,
+              onDismissNarrativa: () {
+                setState(() {
+                  controller.mensajeNarrativoActual = null;
+                });
+                if (controller.encuentroSuperado) {
+                  controller.continuarSiguienteEncuentro();
+                }
+              },
             ),
           );
         },
@@ -192,6 +205,58 @@ class _CombateScreenState extends State<CombateScreen>
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (_) => false,
+    );
+  }
+
+  void _mostrarMenuPausa(BuildContext context) {
+    final controller = _controller;
+    if (controller == null) return;
+    controller.pausarCombate();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.superficieNoche,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: AppTheme.superficieElevada, width: 2),
+          ),
+          title: const Text(
+            'Combate Pausado',
+            style: TextStyle(fontFamily: 'PressStart2P', color: AppTheme.azulTexto, fontSize: 16),
+          ),
+          content: const Text(
+            '¿Deseas continuar la batalla o retirarte?',
+            style: TextStyle(color: AppTheme.azulTexto),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                controller.continuarCombate();
+              },
+              child: const Text('Continuar', style: TextStyle(color: AppTheme.verdeVida)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await controller.retirarse();
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Te has retirado de la partida.'),
+                    backgroundColor: AppTheme.rojoDanio,
+                  ),
+                );
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
+              child: const Text('Retirarse', style: TextStyle(color: AppTheme.rojoDanio)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -230,6 +295,7 @@ class _CombateContenido extends StatelessWidget {
   final VoidCallback onContinuar;
   final VoidCallback onVolverAJugar;
   final VoidCallback onVerProgreso;
+  final VoidCallback onDismissNarrativa;
 
   const _CombateContenido({
     required this.controller,
@@ -246,6 +312,7 @@ class _CombateContenido extends StatelessWidget {
     required this.onContinuar,
     required this.onVolverAJugar,
     required this.onVerProgreso,
+    required this.onDismissNarrativa,
   });
 
   @override
@@ -267,7 +334,12 @@ class _CombateContenido extends StatelessWidget {
             danioKey: danioEnemigoKey,
           ),
           const SizedBox(height: 16),
-          if (controller.encuentroSuperado)
+          if (controller.mensajeNarrativoActual != null)
+            _PanelNarrativo(
+              texto: controller.mensajeNarrativoActual!,
+              onContinuar: onDismissNarrativa,
+            )
+          else if (controller.encuentroSuperado)
             _RondaSuperada(onContinuar: onContinuar)
           else if (controller.combateTerminado)
             _FinCombate(
@@ -785,5 +857,61 @@ String _iconoCategoria(String? categoria) {
       return '🛡️';
     default:
       return '👾';
+  }
+}
+
+class _PanelNarrativo extends StatelessWidget {
+  final String texto;
+  final VoidCallback onContinuar;
+
+  const _PanelNarrativo({
+    required this.texto,
+    required this.onContinuar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppTheme.superficieElevada,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.azulTexto.withValues(alpha: 0.5), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.azulTexto.withValues(alpha: 0.2),
+            blurRadius: 20,
+            spreadRadius: 2,
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.auto_awesome, color: AppTheme.azulTexto, size: 48),
+          const SizedBox(height: 20),
+          Text(
+            texto,
+            style: const TextStyle(
+              fontSize: 16,
+              height: 1.5,
+              color: AppTheme.azulTexto,
+              fontStyle: FontStyle.italic,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 30),
+          ElevatedButton.icon(
+            onPressed: onContinuar,
+            icon: const Icon(Icons.arrow_forward),
+            label: const Text('Continuar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.azulTexto,
+              foregroundColor: AppTheme.fondoNoche,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

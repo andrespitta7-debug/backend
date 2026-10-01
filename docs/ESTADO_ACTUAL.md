@@ -70,11 +70,16 @@ diagnostico en validator
   respuesta correcta es >2× más larga). Combate por turnos sin spam (botones
   deshabilitados ~700ms mientras se procesa el turno). Orden aleatorio de
   encuentros normales (el jefe siempre va al final).
-- **Sub-paso B.2 — Run extendida backend.** Edge Function `generar-quest-completa` con mega-prompt (quest + pool narrativo + 9 preguntas extra). Caché narrativa por tema+categoría+dificultad. Timeout configurable (60s run completa). RPC `crear_run_completa` transaccional. Commit `24f2e65`.
+- **Sub-paso B.2 — Run extendida backend.** Edge Function
+  `generar-quest-completa` con mega-prompt (quest + pool narrativo + 9 preguntas
+  extra). Caché narrativa por tema+categoría+dificultad. Timeout configurable
+  (60s run completa). RPC `crear_run_completa` transaccional. Commit `24f2e65`.
+- **Sub-paso B.3a y B.3b — Run extendida frontend.** Reescritura del
+  `CombateController` y `combate_screen.dart` para soportar preguntas extra,
+  transición automática de enemigos al morir, uso del pool narrativo inmersivo y
+  modal de pausa con retiro/continuar.
 
 ## En curso
-
-- **Sub-paso B.3 (siguiente):** Reescritura del `CombateController` para soportar runs extendidas con narrativa procedural y preguntas extra.
 
 ## Decisiones cerradas (28-sep-2026, revisión HU/CU con el docente y Andrés)
 
@@ -194,5 +199,6 @@ y el docente: `feature/SYSQ-XX` → `dev` → `preprod` → `main`. |
 | 29-sep-2026    | Edge Function `login` completada y probada. Devuelve JWT + perfil + progreso. 4 casos en Postman (200, 401, 400, 405). Commit `ed0cea9`.                                                                                                | Avance del roadmap backend                                                                                     |
 | 30-sep-2026    | Refinamiento visual (CombateScreen con estilo retro y animaciones) y Fix de AuthRepository (cambio de contrato a contraseñas en plano para soportar login con Supabase nativamente sin romper SQLite).                                  | Mejorar inmersión de usuario y solucionar bug de 'contraseña incorrecta' por culpa del hash a nivel Dominio.   |
 | 01-oct-2026    | Edge Function `generar-quest` completada y probada end-to-end. Groq (modelo `openai/gpt-oss-120b`) como proveedor IA principal. Caché de quests implementado. Puerto abstracto `AiProvider` para futuros proveedores. Commit `791ea1a`. | Cierre del Sub-paso 2b: generación de quests con IA funcionando gratis                                         |
-| 01-oct-2026    | Sub-paso B.2 completado. Edge Function `generar-quest-completa` deployada y probada.                                                                                                                                                   | Mecánica de run extendida con narrativa procedural                                                             |
+| 01-oct-2026    | Sub-paso B.2 completado. Edge Function `generar-quest-completa` deployada y probada.                                                                                                                                                    | Mecánica de run extendida con narrativa procedural                                                             |
 | _(fecha)_      | _(siguiente entrada)_                                                                                                                                                                                                                   |                                                                                                                |
+| (Fecha de hoy) | Sub-paso B.3a y B.3b completados. Integración de la UI y lógica para soportar la narrativa y preguntas extra en el frontend del combate.                                                                                                | Cierre del flujo de la run extendida en cliente                                                                |
