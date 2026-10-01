@@ -66,7 +66,20 @@ class HttpAuthRepository implements AuthRepository {
 
   @override
   Future<Usuario?> obtenerPorId(String idUsuario) async {
-    throw UnimplementedError(_mensajeNoImplementado);
+    final accessToken = await _tokenRepo.obtenerAccessToken();
+    if (accessToken == null) {
+      return null;
+    }
+
+    try {
+      return await _client.obtenerUsuarioActual(accessToken);
+    } on ApiException catch (e) {
+      if (e.statusCode == 401) {
+        await _tokenRepo.limpiarTokens();
+        return null;
+      }
+      rethrow;
+    }
   }
 
   @override

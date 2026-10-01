@@ -240,4 +240,128 @@ void main() {
       );
     });
   });
+
+  group('AuthApiClient - obtenerUsuarioActual', () {
+    test('obtenerUsuarioActual exitoso (mock devuelve 200 con usuario)', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, equals('POST'));
+        expect(
+          request.url.toString(),
+          equals('$baseUrl/functions/v1/obtener-usuario-actual'),
+        );
+        expect(request.headers['Content-Type'], equals('application/json'));
+        expect(
+          request.headers['Authorization'],
+          equals('Bearer jwt_test_123'),
+        );
+        expect(request.headers['apikey'], equals(anonKey));
+
+        return http.Response(
+          jsonEncode({
+            'ok': true,
+            'usuario': {
+              'id': 'uuid-123',
+              'email': 'estudiante@udec.edu.co',
+              'nombre_usuario': 'estudiante_dev',
+              'nombre': 'Estudiante',
+              'apellido': 'Udec',
+            },
+          }),
+          200,
+        );
+      });
+
+      final client = AuthApiClient(
+        baseUrl: baseUrl,
+        anonKey: anonKey,
+        httpClient: mockClient,
+      );
+
+      final usuario = await client.obtenerUsuarioActual('jwt_test_123');
+
+      expect(usuario.idUsuario, equals('uuid-123'));
+      expect(usuario.email, equals('estudiante@udec.edu.co'));
+      expect(usuario.nombreUsuario, equals('estudiante_dev'));
+      expect(usuario.nombre, equals('Estudiante'));
+      expect(usuario.apellido, equals('Udec'));
+    });
+
+    test('obtenerUsuarioActual con token inválido/expirado (mock devuelve 401)', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'ok': false,
+            'codigo': 'NO_AUTORIZADO',
+          }),
+          401,
+        );
+      });
+
+      final client = AuthApiClient(
+        baseUrl: baseUrl,
+        anonKey: anonKey,
+        httpClient: mockClient,
+      );
+
+      expect(
+        () => client.obtenerUsuarioActual('jwt_invalido'),
+        throwsA(
+          isA<ApiException>()
+              .having(
+                (e) => e.mensaje,
+                'mensaje',
+                contains('Tu sesión expiró, vuelve a iniciar sesión.'),
+              )
+              .having((e) => e.statusCode, 'statusCode', equals(401)),
+        ),
+      );
+    });
+
+    test('obtenerUsuarioActual con error del servidor >= 500', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({'ok': false, 'codigo': 'ERROR_INTERNO'}),
+          500,
+        );
+      });
+
+      final client = AuthApiClient(
+        baseUrl: baseUrl,
+        anonKey: anonKey,
+        httpClient: mockClient,
+      );
+
+      expect(
+        () => client.obtenerUsuarioActual('jwt_test_123'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.mensaje, 'mensaje', 'Error del servidor, intenta de nuevo.')
+              .having((e) => e.statusCode, 'statusCode', 500),
+        ),
+      );
+    });
+
+    test('obtenerUsuarioActual con error de red', () async {
+      final mockClient = MockClient((request) async {
+        throw http.ClientException('Fallo de conexión');
+      });
+
+      final client = AuthApiClient(
+        baseUrl: baseUrl,
+        anonKey: anonKey,
+        httpClient: mockClient,
+      );
+
+      expect(
+        () => client.obtenerUsuarioActual('jwt_test_123'),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.mensaje,
+            'mensaje',
+            'No se pudo conectar al servidor, revisa tu conexión.',
+          ),
+        ),
+      );
+    });
+  });
 }

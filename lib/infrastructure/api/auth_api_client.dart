@@ -116,6 +116,79 @@ class AuthApiClient {
     );
   }
 
+  /// Obtiene los datos del usuario autenticado actual llamando a la Edge Function `obtener-usuario-actual`.
+  Future<Usuario> obtenerUsuarioActual(String accessToken) async {
+    final urlLimpia = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+    final uri = Uri.parse('$urlLimpia/functions/v1/obtener-usuario-actual');
+
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $accessToken',
+      'apikey': anonKey,
+    };
+
+    final http.Response response;
+    try {
+      response = await _client.post(
+        uri,
+        headers: headers,
+        body: jsonEncode({}),
+      );
+    } catch (_) {
+      throw const ApiException(
+        'No se pudo conectar al servidor, revisa tu conexión.',
+      );
+    }
+
+    final statusCode = response.statusCode;
+
+    if (statusCode == 200) {
+      try {
+        final Map<String, dynamic> data =
+            jsonDecode(response.body) as Map<String, dynamic>;
+        final usuarioMap = data['usuario'] as Map<String, dynamic>? ?? {};
+        return Usuario(
+          idUsuario: usuarioMap['id'] as String? ?? '',
+          email: usuarioMap['email'] as String? ?? '',
+          nombreUsuario: usuarioMap['nombre_usuario'] as String? ?? '',
+          nombre: usuarioMap['nombre'] as String? ?? '',
+          apellido: usuarioMap['apellido'] as String? ?? '',
+        );
+      } catch (_) {
+        throw ApiException(
+          'Error al procesar la respuesta del servidor.',
+          statusCode: statusCode,
+        );
+      }
+    }
+
+    if (statusCode == 401) {
+      throw const ApiException(
+        'Tu sesión expiró, vuelve a iniciar sesión.',
+        statusCode: 401,
+      );
+    }
+
+    if (statusCode >= 500) {
+      throw ApiException(
+        'Error del servidor, intenta de nuevo.',
+        statusCode: statusCode,
+      );
+    }
+
+    String mensaje = 'Error en la solicitud.';
+    try {
+      final Map<String, dynamic> data =
+          jsonDecode(response.body) as Map<String, dynamic>;
+      if (data['error'] is String) {
+        mensaje = data['error'] as String;
+      }
+    } catch (_) {}
+    throw ApiException(mensaje, statusCode: statusCode);
+  }
+
   Future<AuthApiResult> _post(String endpoint, Map<String, dynamic> body) async {
     final urlLimpia = baseUrl.endsWith('/')
         ? baseUrl.substring(0, baseUrl.length - 1)

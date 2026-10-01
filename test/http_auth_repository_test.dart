@@ -12,12 +12,16 @@ import 'package:sysquest_app/infrastructure/api/http_auth_repository.dart';
 
 class FakeTokenRepository implements TokenRepository {
   bool guardarTokensLlamado = false;
+  bool limpiarTokensLlamado = false;
   String? accessTokenGuardado;
   String? refreshTokenGuardado;
   int? expiresInGuardado;
   final bool lanzarError;
 
-  FakeTokenRepository({this.lanzarError = false});
+  FakeTokenRepository({
+    this.lanzarError = false,
+    this.accessTokenGuardado,
+  });
 
   @override
   Future<void> guardarTokens({
@@ -42,7 +46,10 @@ class FakeTokenRepository implements TokenRepository {
   Future<bool> tokenExpirado() async => false;
 
   @override
-  Future<void> limpiarTokens() async {}
+  Future<void> limpiarTokens() async {
+    limpiarTokensLlamado = true;
+    accessTokenGuardado = null;
+  }
 }
 
 void main() {
@@ -274,6 +281,96 @@ void main() {
       });
     });
 
+    group('obtenerPorId', () {
+      test('caso de éxito: llama a la API y devuelve el usuario', () async {
+        final mockClient = MockClient((request) async {
+          expect(request.method, equals('POST'));
+          expect(request.url.path, contains('/obtener-usuario-actual'));
+          expect(
+            request.headers['Authorization'],
+            equals('Bearer valid_jwt_token'),
+          );
+          return http.Response(
+            jsonEncode({
+              'ok': true,
+              'usuario': {
+                'id': 'uuid-123',
+                'email': 'estudiante@udec.edu.co',
+                'nombre_usuario': 'estudiante_dev',
+                'nombre': 'Estudiante',
+                'apellido': 'Udec',
+              },
+            }),
+            200,
+          );
+        });
+
+        final client = AuthApiClient(
+          baseUrl: baseUrl,
+          anonKey: anonKey,
+          httpClient: mockClient,
+        );
+        final tokenRepo = FakeTokenRepository(
+          accessTokenGuardado: 'valid_jwt_token',
+        );
+        final repo = HttpAuthRepository(client, tokenRepo);
+
+        final usuario = await repo.obtenerPorId('uuid-123');
+
+        expect(usuario, isNotNull);
+        expect(usuario!.idUsuario, equals('uuid-123'));
+        expect(usuario.email, equals('estudiante@udec.edu.co'));
+        expect(usuario.nombreUsuario, equals('estudiante_dev'));
+        expect(usuario.nombre, equals('Estudiante'));
+        expect(usuario.apellido, equals('Udec'));
+      });
+
+      test('caso sin token: devuelve null sin llamar a la API', () async {
+        var apiLlamada = false;
+        final mockClient = MockClient((request) async {
+          apiLlamada = true;
+          return http.Response('{}', 200);
+        });
+
+        final client = AuthApiClient(
+          baseUrl: baseUrl,
+          anonKey: anonKey,
+          httpClient: mockClient,
+        );
+        final tokenRepo = FakeTokenRepository(accessTokenGuardado: null);
+        final repo = HttpAuthRepository(client, tokenRepo);
+
+        final usuario = await repo.obtenerPorId('uuid-123');
+
+        expect(usuario, isNull);
+        expect(apiLlamada, isFalse);
+      });
+
+      test('caso API devuelve 401: devuelve null y limpia los tokens', () async {
+        final mockClient = MockClient((request) async {
+          return http.Response(
+            jsonEncode({'ok': false, 'codigo': 'NO_AUTORIZADO'}),
+            401,
+          );
+        });
+
+        final client = AuthApiClient(
+          baseUrl: baseUrl,
+          anonKey: anonKey,
+          httpClient: mockClient,
+        );
+        final tokenRepo = FakeTokenRepository(
+          accessTokenGuardado: 'expired_jwt_token',
+        );
+        final repo = HttpAuthRepository(client, tokenRepo);
+
+        final usuario = await repo.obtenerPorId('uuid-123');
+
+        expect(usuario, isNull);
+        expect(tokenRepo.limpiarTokensLlamado, isTrue);
+      });
+    });
+
     group('métodos aún no implementados en backend lanzan UnimplementedError', () {
       late HttpAuthRepository repo;
 
@@ -284,10 +381,6 @@ void main() {
           httpClient: MockClient((_) async => http.Response('{}', 200)),
         );
         repo = HttpAuthRepository(client, FakeTokenRepository());
-      });
-
-      test('obtenerPorId lanza UnimplementedError', () {
-        expect(() => repo.obtenerPorId('uuid-123'), throwsUnimplementedError);
       });
 
       test('existeEmail lanza UnimplementedError', () {
