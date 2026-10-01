@@ -66,31 +66,15 @@ diagnostico en validator
 - **Retry automático y factory de proveedores.** Diseño preparado para alternar
   entre Groq y Gemini sin tocar código, solo con la variable de entorno
   `AI_PROVIDER`.
-  - **Mejoras de gameplay.** Opciones balanceadas (validación V9 rechaza si la
-    respuesta correcta es >2× más larga). Combate por turnos sin spam (botones
-    deshabilitados ~700ms mientras se procesa el turno). Orden aleatorio de
-    encuentros normales (el jefe siempre va al final).
-    - **Sub-paso B.2 — Run extendida backend.** Edge Function
-      `generar-quest-completa` con mega-prompt (quest + pool narrativo + 9
-      preguntas extra). Caché narrativa por tema+categoría+dificultad. Timeout
-      configurable (10s quest normal, 60s run completa). RPC
-      `crear_run_completa` transaccional. Commit `24f2e65`.
+- **Mejoras de gameplay.** Opciones balanceadas (validación V9 rechaza si la
+  respuesta correcta es >2× más larga). Combate por turnos sin spam (botones
+  deshabilitados ~700ms mientras se procesa el turno). Orden aleatorio de
+  encuentros normales (el jefe siempre va al final).
+- **Sub-paso B.2 — Run extendida backend.** Edge Function `generar-quest-completa` con mega-prompt (quest + pool narrativo + 9 preguntas extra). Caché narrativa por tema+categoría+dificultad. Timeout configurable (60s run completa). RPC `crear_run_completa` transaccional. Commit `24f2e65`.
 
 ## En curso
 
-- Proyecto Supabase `sysquest` en creación (29-sep): organización creada,
-  proyecto en aprovisionamiento.
-- Revisar un cambio sin commitear en `lib/presentation/theme/app_theme.dart`
-  (ajuste de colores de fondo, hecho por Jhony; falta confirmar el diff completo
-  y commitear).
-- Reparto de repos `frontend`/`backend`: **resuelto verbalmente por el docente
-  (29-sep)** — todo va al repo `backend` por ahora; se reorganiza antes de la
-  expo, mientras se integra la interfaz.
-- **Conectar Flutter a los Edge Functions** (reemplazar auth local por llamadas
-  HTTP al backend).
-- Edge Function de generación de quests con IA (después).
-- **Sub-paso B.3 (siguiente):** Reescritura del `CombateController` para
-  soportar runs extendidas con narrativa procedural.
+- **Sub-paso B.3 (siguiente):** Reescritura del `CombateController` para soportar runs extendidas con narrativa procedural y preguntas extra.
 
 ## Decisiones cerradas (28-sep-2026, revisión HU/CU con el docente y Andrés)
 
@@ -210,15 +194,5 @@ y el docente: `feature/SYSQ-XX` → `dev` → `preprod` → `main`. |
 | 29-sep-2026    | Edge Function `login` completada y probada. Devuelve JWT + perfil + progreso. 4 casos en Postman (200, 401, 400, 405). Commit `ed0cea9`.                                                                                                | Avance del roadmap backend                                                                                     |
 | 30-sep-2026    | Refinamiento visual (CombateScreen con estilo retro y animaciones) y Fix de AuthRepository (cambio de contrato a contraseñas en plano para soportar login con Supabase nativamente sin romper SQLite).                                  | Mejorar inmersión de usuario y solucionar bug de 'contraseña incorrecta' por culpa del hash a nivel Dominio.   |
 | 01-oct-2026    | Edge Function `generar-quest` completada y probada end-to-end. Groq (modelo `openai/gpt-oss-120b`) como proveedor IA principal. Caché de quests implementado. Puerto abstracto `AiProvider` para futuros proveedores. Commit `791ea1a`. | Cierre del Sub-paso 2b: generación de quests con IA funcionando gratis                                         |
+| 01-oct-2026    | Sub-paso B.2 completado. Edge Function `generar-quest-completa` deployada y probada.                                                                                                                                                   | Mecánica de run extendida con narrativa procedural                                                             |
 | _(fecha)_      | _(siguiente entrada)_                                                                                                                                                                                                                   |                                                                                                                |
-
-| 01-oct-2026 | Mejoras de gameplay implementadas: opciones balanceadas (prompt
-reforzado + validación V9), combate sin spam (bloqueo de botones durante turno),
-orden aleatorio de encuentros normales (jefe siempre al final). 114 tests
-pasando. Commits `<hash1>` y `<hash2>`. | Mejora de experiencia de juego | |
-01-oct-2026 | Sub-paso B.2 completado. Edge Function `generar-quest-completa`
-deployada y probada: genera quest + pool narrativo (32 variantes) + 9 preguntas
-extra en 1 llamada a Groq. Caché narrativa por (tema, categoria, dificultad)
-funcionando. Timeout configurable por llamada (60s para run completa). RPC
-`crear_run_completa` aplicada. Commit `24f2e65`. | Mecánica de run extendida con
-narrativa procedural |
