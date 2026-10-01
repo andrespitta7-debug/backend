@@ -211,6 +211,7 @@ Deno.serve(async (req: Request) => {
     systemInstruction: SYSTEM_PROMPT_NARRATIVA,
     userPrompt,
     schema,
+    timeoutMs: 60000,
   });
   const latenciaMs = Date.now() - inicioMs;
 

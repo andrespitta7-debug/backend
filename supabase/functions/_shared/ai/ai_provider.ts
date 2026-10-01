@@ -12,6 +12,7 @@ export interface QuestGenerationParams {
   systemInstruction: string;
   userPrompt: string;
   schema: object;
+  timeoutMs?: number;
 }
 
 export type QuestGenerationResult =

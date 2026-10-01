@@ -31,8 +31,9 @@ export class GroqProvider implements AiProvider {
       max_tokens: 6000,
     };
 
+    const timeoutMs = params.timeoutMs ?? 10000;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(endpoint, {
