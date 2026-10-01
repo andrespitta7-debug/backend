@@ -42,6 +42,12 @@ REGLAS ESTRICTAS:
   ejemplo un parche que no ataca la causa real).
 - Las opciones incorrectas deben ser plausibles, no absurdas, y distintas
   entre sí. No pongas la opción correcta siempre en la misma posición.
+- Todas las opciones de un encuentro deben tener longitud similar
+  (dentro de un rango de ±30% respecto a la media del encuentro).
+  NO hagas que la opción con calidad 2 sea significativamente más
+  larga que las demás. Si una opción necesita más contexto, acórtala
+  a una longitud comparable. Las 4 opciones deben verse parecidas en
+  extensión al leerlas.
 - Cada opción incluye una explicación breve de por qué tiene esa calidad.
 - El contenido técnico debe ser correcto y adecuado al nivel de dificultad
   indicado. Si no estás seguro de un dato técnico, no lo uses.

@@ -163,6 +163,7 @@ class _CombateScreenState extends State<CombateScreen>
             },
             child: _CombateContenido(
               controller: controller,
+              turnoEnProceso: controller.turnoEnProceso,
               encuentro: encuentro,
               categoria:
                   widget.categoriaQuest ??
@@ -216,6 +217,7 @@ class _CombateScreenState extends State<CombateScreen>
 
 class _CombateContenido extends StatelessWidget {
   final CombateController controller;
+  final bool turnoEnProceso;
   final Encuentro encuentro;
   final String? categoria;
   final int? danioEnemigo;
@@ -231,6 +233,7 @@ class _CombateContenido extends StatelessWidget {
 
   const _CombateContenido({
     required this.controller,
+    required this.turnoEnProceso,
     required this.encuentro,
     required this.categoria,
     required this.danioEnemigo,
@@ -288,10 +291,26 @@ class _CombateContenido extends StatelessWidget {
                 child: _OpcionButton(
                   letra: opcion.letra,
                   texto: opcion.texto,
-                  onPressed: () => onElegirOpcion(opcion),
+                  onPressed: turnoEnProceso
+                      ? null
+                      : () => onElegirOpcion(opcion),
                 ),
               ),
             ),
+            if (turnoEnProceso)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(
+                  child: Text(
+                    'Resolviendo turno...',
+                    style: TextStyle(
+                      fontFamily: 'PressStart2P',
+                      fontSize: 10,
+                      color: AppTheme.azulTexto,
+                    ),
+                  ),
+                ),
+              ),
             if (controller.mensajeUltimoTurno != null)
               _MensajeTurno(texto: controller.mensajeUltimoTurno!),
           ],
@@ -513,12 +532,12 @@ class _BarraVida extends StatelessWidget {
 class _OpcionButton extends StatelessWidget {
   final String letra;
   final String texto;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const _OpcionButton({
     required this.letra,
     required this.texto,
-    required this.onPressed,
+    this.onPressed,
   });
 
   @override

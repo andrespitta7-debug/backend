@@ -229,5 +229,33 @@ export function validarQuestJson(
     }
   }
 
+  // V9 añade validación de balance de longitudes. Se considera fallo
+  // de IA (el prompt no se respetó) y activa fallback.
+  // La opción con calidad 2 no debe ser más del doble de larga que
+  // el promedio de las otras 3 opciones.
+  for (const enc of data.encuentros) {
+    const longitudes = enc.opciones.map(
+      (op: { texto: string }) => op.texto.trim().length
+    );
+    const opcionCorrecta = enc.opciones.find(
+      (op: { calidad: number }) => op.calidad === 2
+    );
+    if (!opcionCorrecta) {
+      // V5 ya garantiza que existe. Si no existe, es error de otra
+      // validación anterior y no llegamos aquí.
+      continue;
+    }
+    const longitudesOtras = enc.opciones
+      .filter((op: { calidad: number }) => op.calidad !== 2)
+      .map((op: { texto: string }) => op.texto.trim().length);
+    const promedioOtras =
+      longitudesOtras.reduce((a: number, b: number) => a + b, 0) /
+      longitudesOtras.length;
+    const longitudCorrecta = opcionCorrecta.texto.trim().length;
+    if (promedioOtras > 0 && longitudCorrecta > promedioOtras * 2) {
+      return { valido: false, codigo: 'IA_OPCIONES_DESBALANCEADAS' };
+    }
+  }
+
   return { valido: true, quest: data as QuestIa };
 }
