@@ -4,7 +4,8 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsPreflightResponse, jsonResponse } from '../_shared/response.ts';
-import { llamarGemini } from '../_shared/gemini_client.ts';
+import { obtenerProveedor } from '../_shared/ai/ai_factory.ts';
+import { QUEST_JSON_SCHEMA } from '../_shared/quest_schema.ts';
 import { validarQuestJson } from '../_shared/quest_validator.ts';
 import { calcularVidaEnemigo } from '../_shared/vida_enemigo.ts';
 
@@ -230,13 +231,114 @@ Estructura JSON requerida:
     }
   ]
 }
-Incluye los 3 encuentros (numero 1, 2 y 3) y 4 opciones en cada uno.`;
+Incluye los 3 encuentros (numero 1, 2 y 3) y 4 opciones en cada uno.
 
-  // 7. Llamar a Gemini con medición de latencia
+ESTRUCTURA JSON REQUERIDA (cumple exactamente este schema):
+${JSON.stringify(QUEST_JSON_SCHEMA, null, 2)}
+
+Devuelve SOLO el objeto JSON, sin texto adicional ni markdown.`;
+
+  // 6.5. Consultar si ya existe una quest en caché
+  const { data: questEnCache, error: cacheError } = await supabaseAdmin
+    .from('quest')
+    .select(`
+      id,
+      titulo,
+      tema,
+      categoria,
+      dificultad,
+      descripcion,
+      fuente_generacion,
+      version,
+      encuentro (
+        id,
+        numero,
+        tipo_encuentro,
+        dificultad,
+        vida_enemigo,
+        enemigo,
+        pregunta,
+        codigo,
+        opcion_encuentro (
+          id,
+          letra,
+          texto,
+          calidad,
+          explicacion
+        )
+      )
+    `)
+    .eq('tema', temaLimpio)
+    .eq('categoria', categoria)
+    .eq('dificultad', dificultad)
+    .eq('fuente_generacion', 'AI')
+    .eq('activa', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (
+    !cacheError &&
+    questEnCache &&
+    Array.isArray(questEnCache.encuentro) &&
+    questEnCache.encuentro.length === 3
+  ) {
+    console.log('Cache hit:', questEnCache.id);
+
+    // Ordenar encuentros por numero ASC y opciones por letra ASC
+    const encuentrosOrdenados = questEnCache.encuentro
+      .slice()
+      // deno-lint-ignore no-explicit-any
+      .sort((a: any, b: any) => a.numero - b.numero)
+      // deno-lint-ignore no-explicit-any
+      .map((enc: any) => {
+        const opciones = Array.isArray(enc.opcion_encuentro)
+          ? enc.opcion_encuentro
+              .slice()
+              // deno-lint-ignore no-explicit-any
+              .sort((a: any, b: any) => a.letra.localeCompare(b.letra))
+          : [];
+        return {
+          id: enc.id,
+          numero: enc.numero,
+          tipo_encuentro: enc.tipo_encuentro,
+          dificultad: enc.dificultad,
+          vida_enemigo: enc.vida_enemigo,
+          enemigo: enc.enemigo,
+          pregunta: enc.pregunta,
+          codigo: enc.codigo,
+          opciones,
+        };
+      });
+
+    return jsonResponse(
+      {
+        ok: true,
+        fuente: 'CACHE',
+        proveedor_ia: 'cache',
+        quest: {
+          id: questEnCache.id,
+          titulo: questEnCache.titulo,
+          tema: questEnCache.tema,
+          categoria: questEnCache.categoria,
+          dificultad: questEnCache.dificultad,
+          descripcion: questEnCache.descripcion,
+          fuente_generacion: questEnCache.fuente_generacion,
+          version: questEnCache.version,
+          encuentros: encuentrosOrdenados,
+        },
+      },
+      200
+    );
+  }
+
+  // 7. Llamar al proveedor de IA con medición de latencia
+  const proveedor = obtenerProveedor();
   const inicioMs = Date.now();
-  const resultadoGemini = await llamarGemini({
+  const resultadoIa = await proveedor.generarQuest({
     systemInstruction: SYSTEM_PROMPT,
     userPrompt,
+    schema: QUEST_JSON_SCHEMA,
   });
   const latenciaMs = Date.now() - inicioMs;
 
@@ -245,6 +347,7 @@ Incluye los 3 encuentros (numero 1, 2 y 3) y 4 opciones en cada uno.`;
       JSON.stringify({
         evento: 'ia_fallo',
         codigo,
+        proveedor: resultadoIa.proveedor,
         tema: temaLimpio,
         categoria,
         dificultad,
@@ -255,28 +358,28 @@ Incluye los 3 encuentros (numero 1, 2 y 3) y 4 opciones en cada uno.`;
     );
   }
 
-  if (!resultadoGemini.ok) {
-    registrarFalloIa(resultadoGemini.codigo);
-    if (resultadoGemini.codigo === 'CONFIG_FALTANTE') {
+  if (!resultadoIa.ok) {
+    registrarFalloIa(resultadoIa.codigo);
+    if (resultadoIa.codigo === 'CONFIG_FALTANTE') {
       return jsonResponse(
         { ok: false, codigo: 'CONFIG_FALTANTE', usar_fallback: true },
         500
       );
     }
-    if (resultadoGemini.codigo === 'IA_TIMEOUT') {
+    if (resultadoIa.codigo === 'IA_TIMEOUT') {
       return jsonResponse(
         { ok: false, codigo: 'IA_TIMEOUT', usar_fallback: true },
         504
       );
     }
     return jsonResponse(
-      { ok: false, codigo: resultadoGemini.codigo, usar_fallback: true },
+      { ok: false, codigo: resultadoIa.codigo, usar_fallback: true },
       502
     );
   }
 
   // 8. Validar JSON devuelto según reglas V0–V8
-  const resultadoValidacion = validarQuestJson(resultadoGemini.texto, categoria);
+  const resultadoValidacion = validarQuestJson(resultadoIa.texto, categoria);
   if (!resultadoValidacion.valido) {
     registrarFalloIa(resultadoValidacion.codigo);
     return jsonResponse(
@@ -396,6 +499,7 @@ Incluye los 3 encuentros (numero 1, 2 y 3) y 4 opciones en cada uno.`;
     {
       ok: true,
       fuente: 'AI',
+      proveedor_ia: resultadoIa.proveedor,
       quest: questRespuesta,
     },
     201
