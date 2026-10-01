@@ -10,6 +10,8 @@ import 'package:sysquest_app/domain/repositories/partida_repository.dart';
 import 'package:sysquest_app/domain/repositories/quest_repository.dart';
 import 'package:sysquest_app/domain/usecases/finalizar_partida_usecase.dart';
 import 'package:sysquest_app/domain/usecases/responder_encuentro_usecase.dart';
+import 'package:sysquest_app/domain/repositories/quest_generator_repository.dart';
+import 'package:sysquest_app/domain/usecases/generar_encuentros_extra_usecase.dart';
 import 'package:sysquest_app/presentation/screens/combate/combate_controller.dart';
 import 'package:sysquest_app/presentation/screens/combate/combate_screen.dart';
 import 'package:sysquest_app/presentation/theme/app_theme.dart';
@@ -81,6 +83,24 @@ class FakePartidaRepository implements PartidaRepository {
   Future<void> actualizarProgreso(ProgresoUsuario progreso) async {}
 }
 
+class FakeQuestGeneratorRepository implements QuestGeneratorRepository {
+  @override
+  Future<QuestCompleta> generarQuest(String tema) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<Encuentro>> generarEncuentrosExtra({
+    required String idQuest,
+    required String tema,
+    required String categoria,
+    required String dificultad,
+    required int ultimoNumero,
+  }) async {
+    return [];
+  }
+}
+
 void main() {
   testWidgets('muestra cada daño junto a la barra correspondiente', (
     tester,
@@ -89,6 +109,7 @@ void main() {
       FakeQuestRepository(),
       ResponderEncuentroUseCase(),
       FinalizarPartidaUseCase(FakePartidaRepository()),
+      GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
     );
 
     await tester.pumpWidget(

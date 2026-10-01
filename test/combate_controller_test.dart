@@ -9,6 +9,8 @@ import 'package:sysquest_app/domain/repositories/partida_repository.dart';
 import 'package:sysquest_app/domain/repositories/quest_repository.dart';
 import 'package:sysquest_app/domain/usecases/finalizar_partida_usecase.dart';
 import 'package:sysquest_app/domain/usecases/responder_encuentro_usecase.dart';
+import 'package:sysquest_app/domain/repositories/quest_generator_repository.dart';
+import 'package:sysquest_app/domain/usecases/generar_encuentros_extra_usecase.dart';
 import 'package:sysquest_app/presentation/screens/combate/combate_controller.dart';
 
 class FakeQuestRepository implements QuestRepository {
@@ -37,6 +39,24 @@ class FakePartidaRepository implements PartidaRepository {
 
   @override
   Future<void> actualizarProgreso(ProgresoUsuario progreso) async {}
+}
+
+class FakeQuestGeneratorRepository implements QuestGeneratorRepository {
+  @override
+  Future<QuestCompleta> generarQuest(String tema) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<Encuentro>> generarEncuentrosExtra({
+    required String idQuest,
+    required String tema,
+    required String categoria,
+    required String dificultad,
+    required int ultimoNumero,
+  }) async {
+    return [];
+  }
 }
 
 void main() {
@@ -78,6 +98,7 @@ void main() {
         repoQuest,
         ResponderEncuentroUseCase(),
         FinalizarPartidaUseCase(repoPartida),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
         duracionPausaTurno: const Duration(milliseconds: 10),
       );
 
@@ -101,6 +122,7 @@ void main() {
         repoQuest,
         ResponderEncuentroUseCase(),
         FinalizarPartidaUseCase(repoPartida),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
         duracionPausaTurno: const Duration(milliseconds: 30),
       );
 
@@ -157,6 +179,7 @@ void main() {
         repoQuest,
         ResponderEncuentroUseCase(),
         FinalizarPartidaUseCase(FakePartidaRepository()),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
       );
 
       await controller.cargarQuest('q-1', 'u-1');
@@ -216,6 +239,7 @@ void main() {
         repoQuest,
         ResponderEncuentroUseCase(),
         FinalizarPartidaUseCase(FakePartidaRepository()),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
         duracionPausaTurno: Duration.zero,
       );
 
@@ -247,6 +271,7 @@ void main() {
         repoQuest,
         ResponderEncuentroUseCase(),
         FinalizarPartidaUseCase(FakePartidaRepository()),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
         duracionPausaTurno: Duration.zero,
       );
 
@@ -284,6 +309,7 @@ void main() {
         repoQuest,
         ResponderEncuentroUseCase(),
         FinalizarPartidaUseCase(repoPartida),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
         duracionPausaTurno: Duration.zero,
       );
 

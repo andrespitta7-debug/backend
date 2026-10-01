@@ -15,6 +15,17 @@ class FakeQuestGeneratorRepository implements QuestGeneratorRepository {
 
   @override
   Future<QuestCompleta> generarQuest(String tema) async => questCompleta;
+
+  @override
+  Future<List<Encuentro>> generarEncuentrosExtra({
+    required String idQuest,
+    required String tema,
+    required String categoria,
+    required String dificultad,
+    required int ultimoNumero,
+  }) async {
+    return [];
+  }
 }
 
 class FakeQuestRepository implements QuestRepository {

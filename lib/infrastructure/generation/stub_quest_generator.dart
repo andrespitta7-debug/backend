@@ -117,4 +117,16 @@ class StubQuestGenerator implements QuestGeneratorRepository {
       calidad: calidad,
     );
   }
+
+  @override
+  Future<List<Encuentro>> generarEncuentrosExtra({
+    required String idQuest,
+    required String tema,
+    required String categoria,
+    required String dificultad,
+    required int ultimoNumero,
+  }) async {
+    // Stub simply returns empty for now
+    return [];
+  }
 }

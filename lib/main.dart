@@ -11,6 +11,7 @@ import 'domain/repositories/quest_repository.dart';
 import 'domain/repositories/token_repository.dart';
 import 'domain/usecases/auth_usecases.dart';
 import 'domain/usecases/finalizar_partida_usecase.dart';
+import 'domain/usecases/generar_encuentros_extra_usecase.dart';
 import 'domain/usecases/generar_quest_usecase.dart';
 import 'domain/usecases/obtener_progreso_usecase.dart';
 import 'domain/usecases/perfil_usecases.dart';
@@ -128,6 +129,8 @@ Future<void> main() async {
     questRepository,
     guardarLocalmente: !usarBackendRemoto, // false si backend, true si stub
   );
+  
+  final generarEncuentrosExtraUseCase = GenerarEncuentrosExtraUseCase(questGenerator);
 
   runApp(
     MultiProvider(
@@ -153,6 +156,7 @@ Future<void> main() async {
             questRepository,
             responderUseCase,
             finalizarPartidaUseCase,
+            generarEncuentrosExtraUseCase,
           ),
         ),
         ChangeNotifierProvider(

@@ -8,12 +8,14 @@ import '../../../domain/entities/opcion_encuentro.dart';
 import '../../../domain/entities/personaje_partida.dart';
 import '../../../domain/repositories/quest_repository.dart';
 import '../../../domain/usecases/finalizar_partida_usecase.dart';
+import '../../../domain/usecases/generar_encuentros_extra_usecase.dart';
 import '../../../domain/usecases/responder_encuentro_usecase.dart';
 
 class CombateController extends ChangeNotifier {
   final QuestRepository _questRepository;
   final ResponderEncuentroUseCase _responderUseCase;
   final FinalizarPartidaUseCase _finalizarUseCase;
+  final GenerarEncuentrosExtraUseCase _generarExtraUseCase;
   final Duration duracionPausaTurno;
   final _uuid = const Uuid();
   bool _disposed = false;
@@ -23,7 +25,8 @@ class CombateController extends ChangeNotifier {
   CombateController(
     this._questRepository,
     this._responderUseCase,
-    this._finalizarUseCase, {
+    this._finalizarUseCase,
+    this._generarExtraUseCase, {
     this.duracionPausaTurno = const Duration(milliseconds: 700),
   });
 
@@ -46,6 +49,45 @@ class CombateController extends ChangeNotifier {
   bool guardandoResultado = false;
   bool turnoEnProceso = false;
   bool enPausa = false;
+  bool _generandoExtra = false;
+
+  Future<void> _solicitarMasEncuentros() async {
+    if (_generandoExtra) return;
+    _generandoExtra = true;
+
+    try {
+      int ultimoNumero = 0;
+      if (_encuentros.isNotEmpty) {
+        ultimoNumero = _encuentros.map((e) => e.numero).reduce((a, b) => a > b ? a : b);
+      }
+      if (_preguntasExtra.isNotEmpty) {
+        final maxExtra = _preguntasExtra.map((e) => e.numero).reduce((a, b) => a > b ? a : b);
+        if (maxExtra > ultimoNumero) ultimoNumero = maxExtra;
+      }
+
+      // Necesitamos el tema, categoria, dificultad del quest. Lo sacamos del primer encuentro o partida
+      // Asumiremos que tenemos esta info en los encuentros actuales.
+      final primerEncuentro = _encuentros.first;
+      
+      final nuevosEncuentros = await _generarExtraUseCase.ejecutar(
+        idQuest: primerEncuentro.idQuest,
+        tema: primerEncuentro.pregunta, // Para simplificar, el tema real viene del Quest pero en CombateController no tenemos todo el Quest
+        // En una implementación real el Quest se debería guardar o pasar.
+        // Pero como estamos en el controlador, usamos los datos disponibles.
+        categoria: 'libre', 
+        dificultad: primerEncuentro.dificultad,
+        ultimoNumero: ultimoNumero,
+      );
+
+      if (!_disposed) {
+        _preguntasExtra.addAll(nuevosEncuentros);
+      }
+    } catch (e) {
+      debugPrint('Error solicitando más encuentros: $e');
+    } finally {
+      if (!_disposed) _generandoExtra = false;
+    }
+  }
 
   @override
   void dispose() {
@@ -175,6 +217,9 @@ class CombateController extends ChangeNotifier {
         // Si el jugador falla y el enemigo ataca, el siguiente turno carga una nueva pregunta
         if (_preguntasExtra.isNotEmpty) {
           _preguntaActiva = _preguntasExtra.removeAt(0);
+          if (_preguntasExtra.length <= 3 && !_generandoExtra) {
+            _solicitarMasEncuentros();
+          }
         }
         break;
     }
@@ -235,6 +280,11 @@ class CombateController extends ChangeNotifier {
         ? (_consumirFragmentoNarrativo('jefe_avistado') ??
             _consumirFragmentoNarrativo('entre_combates'))
         : _consumirFragmentoNarrativo('entre_combates');
+
+    // Solicitar más preguntas en background si quedan 3 o menos
+    if (_preguntasExtra.length <= 3 && !_generandoExtra) {
+      _solicitarMasEncuentros();
+    }
   }
 
   /// Desbloquea la transición entre encuentros (o avanza al siguiente si se invoca manualmente).
