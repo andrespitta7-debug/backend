@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'domain/entities/usuario.dart';
 import 'domain/repositories/auth_repository.dart';
+import 'domain/repositories/partida_repository.dart';
 import 'domain/repositories/quest_generator_repository.dart';
+import 'domain/repositories/quest_repository.dart';
 import 'domain/repositories/token_repository.dart';
 import 'domain/usecases/auth_usecases.dart';
 import 'domain/usecases/finalizar_partida_usecase.dart';
@@ -15,7 +17,9 @@ import 'domain/usecases/perfil_usecases.dart';
 import 'domain/usecases/responder_encuentro_usecase.dart';
 import 'infrastructure/api/auth_api_client.dart';
 import 'infrastructure/api/http_auth_repository.dart';
+import 'infrastructure/api/http_partida_repository.dart';
 import 'infrastructure/api/http_quest_generator_repository.dart';
+import 'infrastructure/api/http_quest_repository.dart';
 import 'infrastructure/generation/stub_quest_generator.dart';
 import 'infrastructure/persistence/secure_token_repository.dart';
 import 'infrastructure/persistence/shared_preferences_sesion_repository.dart';
@@ -45,8 +49,6 @@ Future<void> main() async {
   final dbHelper = DatabaseHelper.instance;
   await dbHelper.insertarDatosDePrueba();
 
-  final questRepository = SqliteQuestRepository(dbHelper);
-  final partidaRepository = SqlitePartidaRepository(dbHelper);
   final preferences = await SharedPreferences.getInstance();
   final sesionRepository = SharedPreferencesSesionRepository(preferences);
 
@@ -54,30 +56,45 @@ Future<void> main() async {
   final tokenRepository = SecureTokenRepository(secureStorage);
 
   final AuthRepository authRepository;
+  final QuestRepository questRepository;
+  final PartidaRepository partidaRepository;
   final QuestGeneratorRepository questGenerator;
+
   if (usarBackendRemoto) {
-    // Usamos el cliente HTTP y el HttpAuthRepository
     const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
     if (anonKey.isEmpty) {
       throw StateError(
         'Falta configurar la clave anónima de Supabase. '
-        'Por favor, pase la clave al ejecutar: --dart-define=SUPABASE_ANON_KEY=tu_clave',
+        'Pasar al ejecutar: --dart-define=SUPABASE_ANON_KEY=<tu_anon_key>',
       );
     }
-    final authClient = AuthApiClient(
-      baseUrl: const String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://jctulgfdweeurqbmugot.supabase.co'),
-      anonKey: anonKey,
+    const supabaseUrl = String.fromEnvironment(
+      'SUPABASE_URL',
+      defaultValue: 'https://jctulgfdweeurqbmugot.supabase.co',
     );
-    final remoteRepo = HttpAuthRepository(authClient, tokenRepository);
-    authRepository = remoteRepo;
+
+    final authClient = AuthApiClient(baseUrl: supabaseUrl, anonKey: anonKey);
+
+    authRepository = HttpAuthRepository(authClient, tokenRepository);
+    questRepository = HttpQuestRepository(
+      baseUrl: supabaseUrl,
+      anonKey: anonKey,
+      tokenRepository: tokenRepository,
+    );
+    partidaRepository = HttpPartidaRepository(
+      baseUrl: supabaseUrl,
+      anonKey: anonKey,
+      tokenRepository: tokenRepository,
+    );
     questGenerator = HttpQuestGeneratorRepository(
-      baseUrl: const String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://jctulgfdweeurqbmugot.supabase.co'),
+      baseUrl: supabaseUrl,
       anonKey: anonKey,
       tokenRepository: tokenRepository,
     );
   } else {
-    // Flujo clásico con SQLite (usarBackendRemoto = false)
     authRepository = SqliteAuthRepository(dbHelper);
+    questRepository = SqliteQuestRepository(dbHelper);
+    partidaRepository = SqlitePartidaRepository(dbHelper);
     questGenerator = StubQuestGenerator();
   }
 
@@ -98,7 +115,10 @@ Future<void> main() async {
   final actualizarPerfilUseCase = ActualizarPerfilUseCase(authRepository);
   final cambiarPasswordUseCase = CambiarPasswordUseCase(authRepository);
   final eliminarCuentaUseCase = EliminarCuentaUseCase(authRepository);
-  final finalizarPartidaUseCase = FinalizarPartidaUseCase(partidaRepository);
+  final finalizarPartidaUseCase = FinalizarPartidaUseCase(
+    partidaRepository,
+    guardarLocalmente: !usarBackendRemoto,
+  );
   final obtenerProgresoUseCase = ObtenerProgresoUseCase(partidaRepository);
 
   // Cuando el backend está activo, el Edge Function ya guarda la
