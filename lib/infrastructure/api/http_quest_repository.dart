@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../domain/entities/encuentro.dart';
@@ -53,7 +54,18 @@ class HttpQuestRepository implements QuestRepository {
         headers: headers,
         body: jsonEncode({'id_quest': idQuest}),
       );
-    } catch (_) {
+      if (kDebugMode) {
+        debugPrint('[HttpQuestRepository] POST $uri');
+        debugPrint(
+          '[HttpQuestRepository] Body: ${jsonEncode({'id_quest': idQuest})}',
+        );
+        debugPrint('[HttpQuestRepository] Status: ${response.statusCode}');
+        debugPrint('[HttpQuestRepository] Response body: ${response.body}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[HttpQuestRepository] EXCEPCIÓN en fetch: $e');
+      }
       throw const ApiException(
         'No se pudo conectar al servidor, revisa tu conexión.',
       );
@@ -120,6 +132,9 @@ class HttpQuestRepository implements QuestRepository {
 
   @override
   Future<Quest?> obtenerQuestPorId(String idQuest) async {
+    if (kDebugMode) {
+      debugPrint('[HttpQuestRepository] obtenerQuestPorId($idQuest)');
+    }
     final questMap = await _obtenerQuestJson(idQuest);
     if (questMap == null) return null;
 
@@ -137,6 +152,9 @@ class HttpQuestRepository implements QuestRepository {
 
   @override
   Future<List<Encuentro>> obtenerEncuentros(String idQuest) async {
+    if (kDebugMode) {
+      debugPrint('[HttpQuestRepository] obtenerEncuentros($idQuest)');
+    }
     final questMap = await _obtenerQuestJson(idQuest);
     if (questMap == null) return [];
 
