@@ -230,16 +230,160 @@ void main() {
       );
     });
 
-    test('obtenerProgreso y actualizarProgreso lanzan UnimplementedError', () {
+    test('obtenerProgreso exitoso devuelve ProgresoUsuario con campos correctos', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.method, equals('POST'));
+        expect(
+          request.url.toString(),
+          equals('$baseUrl/functions/v1/obtener-progreso'),
+        );
+        expect(request.headers['Content-Type'], equals('application/json'));
+        expect(
+          request.headers['Authorization'],
+          equals('Bearer $accessToken'),
+        );
+        expect(request.headers['apikey'], equals(anonKey));
+
+        return http.Response(
+          jsonEncode({
+            'ok': true,
+            'progreso': {
+              'nivel': 3,
+              'xp_total': 250,
+              'quests_completadas': 4,
+              'victorias': 5,
+              'derrotas': 1,
+              'partidas_jugadas': 6,
+            },
+          }),
+          200,
+        );
+      });
+
       final repo = HttpPartidaRepository(
         baseUrl: baseUrl,
         anonKey: anonKey,
         tokenRepository: fakeTokenRepo,
+        httpClient: mockClient,
+      );
+
+      final progreso = await repo.obtenerProgreso('user-uuid-1');
+
+      expect(progreso, isNotNull);
+      expect(progreso!.idUsuario, equals('user-uuid-1'));
+      expect(progreso.nivel, equals(3));
+      expect(progreso.xpTotal, equals(250));
+      expect(progreso.questsCompletadas, equals(4));
+      expect(progreso.victorias, equals(5));
+      expect(progreso.derrotas, equals(1));
+      expect(progreso.partidasJugadas, equals(6));
+    });
+
+    test('obtenerProgreso con 404 devuelve null', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'ok': false,
+            'codigo': 'PROGRESO_NO_ENCONTRADO',
+          }),
+          404,
+        );
+      });
+
+      final repo = HttpPartidaRepository(
+        baseUrl: baseUrl,
+        anonKey: anonKey,
+        tokenRepository: fakeTokenRepo,
+        httpClient: mockClient,
+      );
+
+      final progreso = await repo.obtenerProgreso('user-inexistente');
+      expect(progreso, isNull);
+    });
+
+    test('obtenerProgreso sin token lanza ApiException 401', () async {
+      final repo = HttpPartidaRepository(
+        baseUrl: baseUrl,
+        anonKey: anonKey,
+        tokenRepository: FakeTokenRepository(token: null),
+        httpClient: MockClient((_) async => http.Response('{}', 200)),
       );
 
       expect(
-        () => repo.obtenerProgreso('user-1'),
-        throwsA(isA<UnimplementedError>()),
+        () => repo.obtenerProgreso('user-uuid-1'),
+        throwsA(
+          isA<ApiException>()
+              .having(
+                (e) => e.mensaje,
+                'mensaje',
+                contains('Tu sesión expiró, vuelve a iniciar sesión.'),
+              )
+              .having((e) => e.statusCode, 'statusCode', equals(401)),
+        ),
+      );
+    });
+
+    test('obtenerProgreso con 500 lanza ApiException', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'ok': false,
+            'codigo': 'ERROR_INTERNO',
+          }),
+          500,
+        );
+      });
+
+      final repo = HttpPartidaRepository(
+        baseUrl: baseUrl,
+        anonKey: anonKey,
+        tokenRepository: fakeTokenRepo,
+        httpClient: mockClient,
+      );
+
+      expect(
+        () => repo.obtenerProgreso('user-uuid-1'),
+        throwsA(
+          isA<ApiException>()
+              .having(
+                (e) => e.mensaje,
+                'mensaje',
+                contains('Error del servidor, intenta de nuevo.'),
+              )
+              .having((e) => e.statusCode, 'statusCode', equals(500)),
+        ),
+      );
+    });
+
+    test('obtenerProgreso con error de red lanza ApiException', () async {
+      final mockClient = MockClient((request) async {
+        throw http.ClientException('Error de red');
+      });
+
+      final repo = HttpPartidaRepository(
+        baseUrl: baseUrl,
+        anonKey: anonKey,
+        tokenRepository: fakeTokenRepo,
+        httpClient: mockClient,
+      );
+
+      expect(
+        () => repo.obtenerProgreso('user-uuid-1'),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.mensaje,
+            'mensaje',
+            contains('No se pudo conectar al servidor, revisa tu conexión.'),
+          ),
+        ),
+      );
+    });
+
+    test('actualizarProgreso lanza UnimplementedError', () {
+      final repo = HttpPartidaRepository(
+        baseUrl: baseUrl,
+        anonKey: anonKey,
+        tokenRepository: fakeTokenRepo,
       );
 
       expect(

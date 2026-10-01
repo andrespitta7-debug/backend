@@ -6,8 +6,8 @@ import '../../domain/repositories/partida_repository.dart';
 import '../../domain/repositories/token_repository.dart';
 import 'api_exception.dart';
 
-/// Implementación HTTP de [PartidaRepository] que se comunica con la
-/// Edge Function `finalizar-partida` de Supabase.
+/// Implementación HTTP de [PartidaRepository] que se comunica con las
+/// Edge Functions `finalizar-partida` y `obtener-progreso` de Supabase.
 class HttpPartidaRepository implements PartidaRepository {
   final String baseUrl;
   final String anonKey;
@@ -114,8 +114,109 @@ class HttpPartidaRepository implements PartidaRepository {
 
   @override
   Future<ProgresoUsuario?> obtenerProgreso(String idUsuario) async {
-    throw UnimplementedError(
-      'obtenerProgreso aún no está implementado en HttpPartidaRepository.',
+    // El idUsuario del puerto no se envía en el cuerpo ya que
+    // la Edge Function lo extrae directamente del JWT autenticado.
+    final accessToken = await tokenRepository.obtenerAccessToken();
+    if (accessToken == null) {
+      throw const ApiException(
+        'Tu sesión expiró, vuelve a iniciar sesión.',
+        statusCode: 401,
+      );
+    }
+
+    final urlLimpia = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+    final uri = Uri.parse('$urlLimpia/functions/v1/obtener-progreso');
+
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $accessToken',
+      'apikey': anonKey,
+    };
+
+    final http.Response response;
+    try {
+      response = await _client.post(
+        uri,
+        headers: headers,
+        body: jsonEncode({}),
+      );
+    } catch (_) {
+      throw const ApiException(
+        'No se pudo conectar al servidor, revisa tu conexión.',
+      );
+    }
+
+    final statusCode = response.statusCode;
+
+    // 1. Éxito: 200 OK
+    if (statusCode == 200 || statusCode == 201) {
+      try {
+        final Map<String, dynamic> data =
+            jsonDecode(response.body) as Map<String, dynamic>;
+        final progresoMap = data['progreso'] as Map<String, dynamic>?;
+        if (progresoMap == null) return null;
+
+        return ProgresoUsuario(
+          idUsuario: idUsuario,
+          nivel: (progresoMap['nivel'] as num?)?.toInt() ?? 1,
+          xpTotal: (progresoMap['xp_total'] as num?)?.toInt() ?? 0,
+          questsCompletadas:
+              (progresoMap['quests_completadas'] as num?)?.toInt() ?? 0,
+          victorias: (progresoMap['victorias'] as num?)?.toInt() ?? 0,
+          derrotas: (progresoMap['derrotas'] as num?)?.toInt() ?? 0,
+          partidasJugadas:
+              (progresoMap['partidas_jugadas'] as num?)?.toInt() ?? 0,
+        );
+      } catch (_) {
+        throw ApiException(
+          'Error al procesar la respuesta del servidor.',
+          statusCode: statusCode,
+        );
+      }
+    }
+
+    // 2. Progreso no encontrado: 404
+    if (statusCode == 404) {
+      return null;
+    }
+
+    // 3. Sesión expirada: 401
+    if (statusCode == 401) {
+      throw const ApiException(
+        'Tu sesión expiró, vuelve a iniciar sesión.',
+        statusCode: 401,
+      );
+    }
+
+    // 4. Error en datos de entrada: 400
+    if (statusCode == 400) {
+      String mensaje = 'Datos de solicitud inválidos.';
+      try {
+        final Map<String, dynamic> data =
+            jsonDecode(response.body) as Map<String, dynamic>;
+        if (data['detalle'] is String) {
+          mensaje = data['detalle'] as String;
+        } else if (data['error'] is String) {
+          mensaje = data['error'] as String;
+        }
+      } catch (_) {}
+      throw ApiException(mensaje, statusCode: 400);
+    }
+
+    // 5. Errores del servidor: >= 500
+    if (statusCode >= 500) {
+      throw ApiException(
+        'Error del servidor, intenta de nuevo.',
+        statusCode: statusCode,
+      );
+    }
+
+    // 6. Otros códigos no esperados
+    throw ApiException(
+      'Error inesperado del servidor.',
+      statusCode: statusCode,
     );
   }
 
