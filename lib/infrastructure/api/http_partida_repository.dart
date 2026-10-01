@@ -1,0 +1,128 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+import '../../domain/entities/personaje_partida.dart';
+import '../../domain/repositories/partida_repository.dart';
+import '../../domain/repositories/token_repository.dart';
+import 'api_exception.dart';
+
+/// Implementación HTTP de [PartidaRepository] que se comunica con la
+/// Edge Function `finalizar-partida` de Supabase.
+class HttpPartidaRepository implements PartidaRepository {
+  final String baseUrl;
+  final String anonKey;
+  final TokenRepository tokenRepository;
+  final http.Client _client;
+
+  HttpPartidaRepository({
+    required this.baseUrl,
+    required this.anonKey,
+    required this.tokenRepository,
+    http.Client? httpClient,
+  }) : _client = httpClient ?? http.Client();
+
+  @override
+  Future<void> guardarPartida(Partida partida) async {
+    final accessToken = await tokenRepository.obtenerAccessToken();
+    if (accessToken == null) {
+      throw const ApiException(
+        'Tu sesión expiró, vuelve a iniciar sesión.',
+        statusCode: 401,
+      );
+    }
+
+    final urlLimpia = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+    final uri = Uri.parse('$urlLimpia/functions/v1/finalizar-partida');
+
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $accessToken',
+      'apikey': anonKey,
+    };
+
+    final body = {
+      'id_partida': partida.idPartida,
+      'id_quest': partida.idQuest,
+      'estado': partida.estado,
+      'encuentro_actual': partida.encuentroActual,
+      'score': partida.score,
+      'xp_obtenida': partida.xpObtenida,
+      'tiempo_segundos': partida.tiempoSegundos,
+      'vida_jugador_actual': partida.vidaJugador,
+      'vida_enemigo_actual': null,
+    };
+
+    final http.Response response;
+    try {
+      response = await _client.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+    } catch (_) {
+      throw const ApiException(
+        'No se pudo conectar al servidor, revisa tu conexión.',
+      );
+    }
+
+    final statusCode = response.statusCode;
+
+    // 1. Éxito: 200 OK o 201 Created
+    if (statusCode == 200 || statusCode == 201) {
+      return;
+    }
+
+    // 2. Sesión expirada: 401
+    if (statusCode == 401) {
+      throw const ApiException(
+        'Tu sesión expiró, vuelve a iniciar sesión.',
+        statusCode: 401,
+      );
+    }
+
+    // 3. Error en datos de entrada: 400
+    if (statusCode == 400) {
+      String mensaje = 'Datos de solicitud inválidos.';
+      try {
+        final Map<String, dynamic> data =
+            jsonDecode(response.body) as Map<String, dynamic>;
+        if (data['detalle'] is String) {
+          mensaje = data['detalle'] as String;
+        } else if (data['error'] is String) {
+          mensaje = data['error'] as String;
+        }
+      } catch (_) {}
+      throw ApiException(mensaje, statusCode: 400);
+    }
+
+    // 4. Errores del servidor: >= 500
+    if (statusCode >= 500) {
+      throw ApiException(
+        'Error del servidor, intenta de nuevo.',
+        statusCode: statusCode,
+      );
+    }
+
+    // 5. Otros códigos no esperados
+    throw ApiException(
+      'Error inesperado del servidor.',
+      statusCode: statusCode,
+    );
+  }
+
+  @override
+  Future<ProgresoUsuario?> obtenerProgreso(String idUsuario) async {
+    throw UnimplementedError(
+      'obtenerProgreso aún no está implementado en HttpPartidaRepository.',
+    );
+  }
+
+  @override
+  Future<void> actualizarProgreso(ProgresoUsuario progreso) async {
+    throw UnimplementedError(
+      'actualizarProgreso aún no está implementado en HttpPartidaRepository.',
+    );
+  }
+}
