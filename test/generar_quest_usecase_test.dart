@@ -18,9 +18,11 @@ class FakeQuestGeneratorRepository implements QuestGeneratorRepository {
 
 class FakeQuestRepository implements QuestRepository {
   QuestCompleta? questGuardada;
+  int llamadasGuardar = 0;
 
   @override
   Future<void> guardarQuestCompleta(QuestCompleta quest) async {
+    llamadasGuardar++;
     questGuardada = quest;
   }
 
@@ -189,6 +191,53 @@ void main() {
         useCase.ejecutar('estructuras de datos'),
         throwsA(isA<QuestInvalidaException>()),
       );
+    });
+
+    test('con guardarLocalmente: true (default) se guarda la quest en el repositorio', () async {
+      final quest = crearQuestCompleta();
+      final repo = FakeQuestRepository();
+      final useCase = GenerarQuestUseCase(
+        FakeQuestGeneratorRepository(quest),
+        repo,
+        guardarLocalmente: true,
+      );
+
+      final resultado = await useCase.ejecutar('estructuras de datos');
+
+      expect(resultado, same(quest));
+      expect(repo.llamadasGuardar, equals(1));
+      expect(repo.questGuardada, same(quest));
+    });
+
+    test('con guardarLocalmente: false NO se guarda en el repositorio pero se retorna', () async {
+      final quest = crearQuestCompleta();
+      final repo = FakeQuestRepository();
+      final useCase = GenerarQuestUseCase(
+        FakeQuestGeneratorRepository(quest),
+        repo,
+        guardarLocalmente: false,
+      );
+
+      final resultado = await useCase.ejecutar('estructuras de datos');
+
+      expect(resultado, same(quest));
+      expect(repo.llamadasGuardar, equals(0));
+      expect(repo.questGuardada, isNull);
+    });
+
+    test('con guardarLocalmente: false las validaciones siguen funcionando igual', () async {
+      final repo = FakeQuestRepository();
+      final useCase = GenerarQuestUseCase(
+        FakeQuestGeneratorRepository(crearQuestCompleta(titulo: '   ')),
+        repo,
+        guardarLocalmente: false,
+      );
+
+      await expectLater(
+        useCase.ejecutar('estructuras de datos'),
+        throwsA(isA<QuestInvalidaException>()),
+      );
+      expect(repo.llamadasGuardar, equals(0));
     });
   });
 }

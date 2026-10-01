@@ -86,6 +86,9 @@ Future<void> main() async {
   final eliminarCuentaUseCase = EliminarCuentaUseCase(authRepository);
   final finalizarPartidaUseCase = FinalizarPartidaUseCase(partidaRepository);
   final obtenerProgresoUseCase = ObtenerProgresoUseCase(partidaRepository);
+  // Cuando se use HttpQuestGeneratorRepository (backend remoto),
+  // pasar guardarLocalmente: false, porque el Edge Function ya
+  // guarda la quest en Postgres.
   // Aquí se cambia StubQuestGenerator por el adaptador real cuando exista.
   final generarQuestUseCase = GenerarQuestUseCase(
     StubQuestGenerator(),

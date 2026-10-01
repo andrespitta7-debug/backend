@@ -27,8 +27,13 @@ class GenerarQuestUseCase {
 
   final QuestGeneratorRepository _generador;
   final QuestRepository _repo;
+  final bool _guardarLocalmente;
 
-  GenerarQuestUseCase(this._generador, this._repo);
+  GenerarQuestUseCase(
+    this._generador,
+    this._repo, {
+    bool guardarLocalmente = true,
+  }) : _guardarLocalmente = guardarLocalmente;
 
   Future<QuestCompleta> ejecutar(String tema) async {
     final temaNormalizado = tema.trim();
@@ -40,7 +45,11 @@ class GenerarQuestUseCase {
 
     final questCompleta = await _generador.generarQuest(temaNormalizado);
     _validarQuest(questCompleta);
-    await _repo.guardarQuestCompleta(questCompleta);
+
+    if (_guardarLocalmente) {
+      await _repo.guardarQuestCompleta(questCompleta);
+    }
+
     return questCompleta;
   }
 
