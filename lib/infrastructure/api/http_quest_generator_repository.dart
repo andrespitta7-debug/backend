@@ -42,7 +42,7 @@ class HttpQuestGeneratorRepository implements QuestGeneratorRepository {
     final urlLimpia = baseUrl.endsWith('/')
         ? baseUrl.substring(0, baseUrl.length - 1)
         : baseUrl;
-    final uri = Uri.parse('$urlLimpia/functions/v1/generar-quest');
+    final uri = Uri.parse('$urlLimpia/functions/v1/generar-quest-completa');
 
     final headers = {
       'Content-Type': 'application/json',
@@ -90,50 +90,30 @@ class HttpQuestGeneratorRepository implements QuestGeneratorRepository {
           fuenteGeneracion: 'ia', // El dominio espera 'ia' en minúscula
         );
 
-        final List<dynamic> encuentrosJson =
-            questMap['encuentros'] as List<dynamic>;
+        final List<dynamic> encuentrosJson = questMap['encuentros'] as List<dynamic>;
         final encuentros = <Encuentro>[];
-
         for (final item in encuentrosJson) {
-          final encMap = item as Map<String, dynamic>;
-          final encuentroId = encMap['id'] as String;
-
-          final List<dynamic> opcionesJson =
-              encMap['opciones'] as List<dynamic>;
-          final opciones = <OpcionEncuentro>[];
-
-          for (final opItem in opcionesJson) {
-            final opMap = opItem as Map<String, dynamic>;
-            final idOpcion = (opMap['id'] as String?)?.isNotEmpty == true
-                ? opMap['id'] as String
-                : _uuid.v4();
-
-            opciones.add(
-              OpcionEncuentro(
-                idOpcion: idOpcion,
-                idEncuentro: encuentroId,
-                letra: opMap['letra'] as String,
-                texto: opMap['texto'] as String,
-                calidad: (opMap['calidad'] as num).toInt(),
-              ),
-            );
-          }
-
-          encuentros.add(
-            Encuentro(
-              idEncuentro: encuentroId,
-              idQuest: questId,
-              numero: (encMap['numero'] as num).toInt(),
-              pregunta: encMap['pregunta'] as String,
-              dificultad: encMap['dificultad'] as String,
-              tipoEncuentro: encMap['tipo_encuentro'] as String,
-              vidaEnemigo: (encMap['vida_enemigo'] as num).toInt(),
-              opciones: opciones,
-            ),
-          );
+          encuentros.add(_parsearEncuentro(item as Map<String, dynamic>, questId));
         }
 
-        return QuestCompleta(quest: quest, encuentros: encuentros);
+        final Map<String, dynamic>? poolNarrativo = data['pool_narrativo'] as Map<String, dynamic>?;
+
+        final List<Encuentro> preguntasExtra = <Encuentro>[];
+        if (data['preguntas_extra'] is List<dynamic>) {
+          final List<dynamic> extrasJson = data['preguntas_extra'] as List<dynamic>;
+          for (final item in extrasJson) {
+            preguntasExtra.add(_parsearEncuentro(item as Map<String, dynamic>, questId));
+          }
+        }
+
+        return QuestCompleta(
+          quest: quest,
+          encuentros: encuentros,
+          poolNarrativo: poolNarrativo,
+          preguntasExtra: preguntasExtra,
+          semilla: (data['semilla'] as num?)?.toInt() ?? 0,
+          idPartida: data['id_partida'] as String? ?? '',
+        );
       } catch (e) {
         if (e is ApiException) rethrow;
         throw ApiException(
@@ -183,6 +163,18 @@ class HttpQuestGeneratorRepository implements QuestGeneratorRepository {
             break;
           case 'IA_JSON_INVALIDO':
             mensaje = 'La IA devolvió un formato inválido, intenta de nuevo.';
+            break;
+          case 'IA_POOL_INVALIDO':
+            mensaje = 'La narrativa generada no es válida, intenta de nuevo.';
+            break;
+          case 'IA_PREGUNTAS_INVALIDAS':
+            mensaje = 'Las preguntas generadas no son válidas, intenta de nuevo.';
+            break;
+          case 'IA_OPCIONES_DESBALANCEADAS':
+            mensaje = 'Las opciones generadas están desbalanceadas, intenta de nuevo.';
+            break;
+          case 'IA_ENCUENTROS_INVALIDOS':
+            mensaje = 'Los encuentros generados no son válidos, intenta de nuevo.';
             break;
           default:
             mensaje = 'No se pudo generar la quest.';
@@ -323,5 +315,40 @@ class HttpQuestGeneratorRepository implements QuestGeneratorRepository {
     }
 
     throw ApiException('Error del servidor.', statusCode: statusCode);
+  }
+
+  Encuentro _parsearEncuentro(Map<String, dynamic> encMap, String questId) {
+    final encuentroId = encMap['id'] as String;
+
+    final List<dynamic> opcionesJson = encMap['opciones'] as List<dynamic>;
+    final opciones = <OpcionEncuentro>[];
+
+    for (final opItem in opcionesJson) {
+      final opMap = opItem as Map<String, dynamic>;
+      final idOpcion = (opMap['id'] as String?)?.isNotEmpty == true
+          ? opMap['id'] as String
+          : _uuid.v4();
+
+      opciones.add(
+        OpcionEncuentro(
+          idOpcion: idOpcion,
+          idEncuentro: encuentroId,
+          letra: opMap['letra'] as String,
+          texto: opMap['texto'] as String,
+          calidad: (opMap['calidad'] as num).toInt(),
+        ),
+      );
+    }
+
+    return Encuentro(
+      idEncuentro: encuentroId,
+      idQuest: questId,
+      numero: (encMap['numero'] as num).toInt(),
+      pregunta: encMap['pregunta'] as String,
+      dificultad: encMap['dificultad'] as String,
+      tipoEncuentro: encMap['tipo_encuentro'] as String,
+      vidaEnemigo: (encMap['vida_enemigo'] as num).toInt(),
+      opciones: opciones,
+    );
   }
 }

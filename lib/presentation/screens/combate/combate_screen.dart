@@ -9,6 +9,7 @@ import '../../../domain/entities/opcion_encuentro.dart';
 import '../../../domain/usecases/auth_usecases.dart';
 import '../../../domain/usecases/finalizar_partida_usecase.dart';
 import '../../../domain/usecases/responder_encuentro_usecase.dart';
+import '../../../domain/entities/quest_completa.dart';
 import '../../theme/app_theme.dart';
 import '../auth/auth_controller.dart';
 import '../auth/login_screen.dart';
@@ -19,12 +20,14 @@ class CombateScreen extends StatefulWidget {
   final String idQuest;
   final String idUsuario;
   final String? categoriaQuest;
+  final QuestCompleta? questCompleta;
 
   const CombateScreen({
     super.key,
     required this.idQuest,
     required this.idUsuario,
     this.categoriaQuest,
+    this.questCompleta,
   });
 
   @override
@@ -65,7 +68,16 @@ class _CombateScreenState extends State<CombateScreen>
       final controller = context.read<CombateController>();
       controller.addListener(_detectarCambioDeEstado);
       _controller = controller;
-      controller.cargarQuest(widget.idQuest, widget.idUsuario);
+      controller.cargarQuest(
+        widget.idQuest, 
+        widget.idUsuario,
+        poolNarrativo: widget.questCompleta?.poolNarrativo,
+        preguntasExtra: widget.questCompleta?.preguntasExtra,
+        semilla: widget.questCompleta?.semilla ?? 0,
+        temaQuest: widget.questCompleta?.quest.tema ?? '',
+        categoriaQuest: widget.questCompleta?.quest.categoria ?? '',
+        dificultadQuest: widget.questCompleta?.quest.dificultad ?? '',
+      );
     });
   }
 

@@ -48,6 +48,7 @@ class _GenerarQuestScreenState extends State<GenerarQuestScreen> {
             idQuest: quest.quest.idQuest,
             idUsuario: widget.idUsuario,
             categoriaQuest: quest.quest.categoria,
+            questCompleta: quest,
           ),
         ),
       );

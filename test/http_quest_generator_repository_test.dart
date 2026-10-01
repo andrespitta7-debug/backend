@@ -174,6 +174,33 @@ void main() {
         },
       ],
     },
+    'pool_narrativo': {
+      'inicio': ['Empieza la aventura en el bosque.', 'Caminas por la cueva.'],
+      'victoria': ['¡Ganaste!'],
+    },
+    'preguntas_extra': [
+      {
+        'id': 'enc-extra-1',
+        'numero': 4,
+        'tipo_encuentro': 'normal',
+        'dificultad': 'facil',
+        'vida_enemigo': 20,
+        'enemigo': 'Esqueleto',
+        'pregunta': '¿Pregunta extra?',
+        'codigo': null,
+        'opciones': [
+          {
+            'id': 'op-ex-1',
+            'letra': 'A',
+            'texto': 'Sí',
+            'calidad': 2,
+            'explicacion': null,
+          },
+        ],
+      }
+    ],
+    'semilla': 12345,
+    'id_partida': 'partida-test',
   });
 
   group('HttpQuestGeneratorRepository', () {
@@ -182,7 +209,7 @@ void main() {
         expect(request.method, equals('POST'));
         expect(
           request.url.toString(),
-          equals('$baseUrl/functions/v1/generar-quest'),
+          equals('$baseUrl/functions/v1/generar-quest-completa'),
         );
         expect(request.headers['Content-Type'], equals('application/json'));
         expect(
@@ -240,6 +267,14 @@ void main() {
       expect(enc3.esJefe, isTrue);
       expect(enc3.vidaEnemigo, equals(70));
       expect(enc3.opciones.length, equals(4));
+
+      // Verificación de los nuevos campos
+      expect(resultado.poolNarrativo, isNotNull);
+      expect((resultado.poolNarrativo!['inicio'] as List).length, equals(2));
+      expect(resultado.preguntasExtra.length, equals(1));
+      expect(resultado.preguntasExtra[0].pregunta, equals('¿Pregunta extra?'));
+      expect(resultado.semilla, equals(12345));
+      expect(resultado.idPartida, equals('partida-test'));
     });
 
     test('generarQuest sin token en TokenRepository lanza ApiException 401', () async {

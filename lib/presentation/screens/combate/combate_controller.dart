@@ -35,6 +35,10 @@ class CombateController extends ChangeNotifier {
   int _indiceActual = 0;
   Encuentro? _preguntaActiva;
   Map<String, dynamic>? _poolNarrativo;
+  int _poolNarrativoSemilla = 0;
+  String _temaQuest = '';
+  String _categoriaQuest = '';
+  String _dificultadQuest = 'facil';
   late Partida _partida;
 
   int vidaJugador = 100;
@@ -71,11 +75,9 @@ class CombateController extends ChangeNotifier {
       
       final nuevosEncuentros = await _generarExtraUseCase.ejecutar(
         idQuest: primerEncuentro.idQuest,
-        tema: primerEncuentro.pregunta, // Para simplificar, el tema real viene del Quest pero en CombateController no tenemos todo el Quest
-        // En una implementación real el Quest se debería guardar o pasar.
-        // Pero como estamos en el controlador, usamos los datos disponibles.
-        categoria: 'libre', 
-        dificultad: primerEncuentro.dificultad,
+        tema: _temaQuest,
+        categoria: _categoriaQuest,
+        dificultad: _dificultadQuest,
         ultimoNumero: ultimoNumero,
       );
 
@@ -128,6 +130,9 @@ class CombateController extends ChangeNotifier {
   /// Partida actual.
   Partida get partida => _partida;
 
+  /// Semilla para RNG narrativo.
+  int get poolNarrativoSemilla => _poolNarrativoSemilla;
+
   /// Consume y remueve el primer fragmento disponible de una categoría del pool narrativo.
   String? _consumirFragmentoNarrativo(String categoria) {
     if (_poolNarrativo == null) return null;
@@ -144,6 +149,10 @@ class CombateController extends ChangeNotifier {
     String idUsuario, {
     Map<String, dynamic>? poolNarrativo,
     List<Encuentro>? preguntasExtra,
+    int semilla = 0,
+    String temaQuest = '',
+    String categoriaQuest = '',
+    String dificultadQuest = '',
   }) async {
     cargando = true;
     combateTerminado = false;
@@ -173,6 +182,18 @@ class CombateController extends ChangeNotifier {
 
     _encuentros = [...normales, ...jefes];
     _indiceActual = 0;
+
+    if (poolNarrativo != null) {
+      _poolNarrativo = poolNarrativo;
+    }
+    if (preguntasExtra != null && preguntasExtra.isNotEmpty) {
+      _preguntasExtra = List<Encuentro>.from(preguntasExtra);
+    }
+    _poolNarrativoSemilla = semilla;
+
+    if (temaQuest.isNotEmpty) _temaQuest = temaQuest;
+    if (categoriaQuest.isNotEmpty) _categoriaQuest = categoriaQuest;
+    if (dificultadQuest.isNotEmpty) _dificultadQuest = dificultadQuest;
 
     if (_encuentros.isNotEmpty) {
       vidaEnemigo = _encuentros.first.vidaEnemigo;
