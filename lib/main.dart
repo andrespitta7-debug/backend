@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'domain/entities/usuario.dart';
 import 'domain/repositories/auth_repository.dart';
+import 'domain/repositories/quest_generator_repository.dart';
 import 'domain/repositories/token_repository.dart';
 import 'domain/usecases/auth_usecases.dart';
 import 'domain/usecases/finalizar_partida_usecase.dart';
@@ -14,6 +15,7 @@ import 'domain/usecases/perfil_usecases.dart';
 import 'domain/usecases/responder_encuentro_usecase.dart';
 import 'infrastructure/api/auth_api_client.dart';
 import 'infrastructure/api/http_auth_repository.dart';
+import 'infrastructure/api/http_quest_generator_repository.dart';
 import 'infrastructure/generation/stub_quest_generator.dart';
 import 'infrastructure/persistence/secure_token_repository.dart';
 import 'infrastructure/persistence/shared_preferences_sesion_repository.dart';
@@ -29,7 +31,12 @@ import 'presentation/screens/menu/menu_principal_screen.dart';
 import 'presentation/screens/progreso/progreso_controller.dart';
 import 'presentation/theme/app_theme.dart';
 
-const bool usarBackendRemoto = false; // cambiar a true para probar el backend real
+// El flag usarBackendRemoto controla si la app usa el backend real
+// (Supabase + Edge Functions) o el prototipo local (SQLite + StubQuestGenerator).
+// Para usar el backend real al correr, pasar:
+//   flutter run --dart-define=SUPABASE_ANON_KEY=<tu_key>
+// El flag debe quedar en true para la demo del docente.
+const bool usarBackendRemoto = true;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +54,7 @@ Future<void> main() async {
   final tokenRepository = SecureTokenRepository(secureStorage);
 
   final AuthRepository authRepository;
+  final QuestGeneratorRepository questGenerator;
   if (usarBackendRemoto) {
     // Usamos el cliente HTTP y el HttpAuthRepository
     const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
@@ -62,9 +70,15 @@ Future<void> main() async {
     );
     final remoteRepo = HttpAuthRepository(authClient, tokenRepository);
     authRepository = remoteRepo;
+    questGenerator = HttpQuestGeneratorRepository(
+      baseUrl: const String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://jctulgfdweeurqbmugot.supabase.co'),
+      anonKey: anonKey,
+      tokenRepository: tokenRepository,
+    );
   } else {
     // Flujo clásico con SQLite (usarBackendRemoto = false)
     authRepository = SqliteAuthRepository(dbHelper);
+    questGenerator = StubQuestGenerator();
   }
 
   final responderUseCase = ResponderEncuentroUseCase();
@@ -86,13 +100,13 @@ Future<void> main() async {
   final eliminarCuentaUseCase = EliminarCuentaUseCase(authRepository);
   final finalizarPartidaUseCase = FinalizarPartidaUseCase(partidaRepository);
   final obtenerProgresoUseCase = ObtenerProgresoUseCase(partidaRepository);
-  // Cuando se use HttpQuestGeneratorRepository (backend remoto),
-  // pasar guardarLocalmente: false, porque el Edge Function ya
-  // guarda la quest en Postgres.
-  // Aquí se cambia StubQuestGenerator por el adaptador real cuando exista.
+
+  // Cuando el backend está activo, el Edge Function ya guarda la
+  // quest en Postgres, por eso no se guarda local.
   final generarQuestUseCase = GenerarQuestUseCase(
-    StubQuestGenerator(),
+    questGenerator,
     questRepository,
+    guardarLocalmente: !usarBackendRemoto, // false si backend, true si stub
   );
 
   runApp(

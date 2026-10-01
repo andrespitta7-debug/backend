@@ -7,6 +7,7 @@ import '../../domain/entities/opcion_encuentro.dart';
 import '../../domain/entities/quest.dart';
 import '../../domain/entities/quest_completa.dart';
 import '../../domain/repositories/quest_generator_repository.dart';
+import '../../domain/repositories/token_repository.dart';
 import 'api_exception.dart';
 
 /// Implementación HTTP de [QuestGeneratorRepository] que se comunica
@@ -14,21 +15,30 @@ import 'api_exception.dart';
 class HttpQuestGeneratorRepository implements QuestGeneratorRepository {
   final String baseUrl;
   final String anonKey;
-  final String accessToken; // JWT del usuario autenticado
+  final TokenRepository _tokenRepository;
   final http.Client _client;
   final Uuid _uuid;
 
   HttpQuestGeneratorRepository({
     required this.baseUrl,
     required this.anonKey,
-    required this.accessToken,
+    required TokenRepository tokenRepository,
     http.Client? httpClient,
     Uuid? uuid,
-  })  : _client = httpClient ?? http.Client(),
+  })  : _tokenRepository = tokenRepository,
+        _client = httpClient ?? http.Client(),
         _uuid = uuid ?? const Uuid();
 
   @override
   Future<QuestCompleta> generarQuest(String tema) async {
+    final accessToken = await _tokenRepository.obtenerAccessToken();
+    if (accessToken == null) {
+      throw const ApiException(
+        'Tu sesión expiró, vuelve a iniciar sesión.',
+        statusCode: 401,
+      );
+    }
+
     final urlLimpia = baseUrl.endsWith('/')
         ? baseUrl.substring(0, baseUrl.length - 1)
         : baseUrl;

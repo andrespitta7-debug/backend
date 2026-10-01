@@ -3,13 +3,40 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'package:sysquest_app/domain/repositories/token_repository.dart';
 import 'package:sysquest_app/infrastructure/api/api_exception.dart';
 import 'package:sysquest_app/infrastructure/api/http_quest_generator_repository.dart';
+
+class FakeTokenRepository implements TokenRepository {
+  String? token;
+
+  FakeTokenRepository({this.token = 'test-jwt-token'});
+
+  @override
+  Future<String?> obtenerAccessToken() async => token;
+
+  @override
+  Future<void> guardarTokens({
+    required String accessToken,
+    required String refreshToken,
+    required int expiresIn,
+  }) async {}
+
+  @override
+  Future<String?> obtenerRefreshToken() async => null;
+
+  @override
+  Future<bool> tokenExpirado() async => false;
+
+  @override
+  Future<void> limpiarTokens() async {}
+}
 
 void main() {
   const baseUrl = 'https://jctulgfdweeurqbmugot.supabase.co';
   const anonKey = 'test-anon-key';
   const accessToken = 'test-jwt-token';
+  final fakeTokenRepo = FakeTokenRepository(token: accessToken);
 
   final sampleSuccessJson = jsonEncode({
     'ok': true,
@@ -175,7 +202,7 @@ void main() {
       final repo = HttpQuestGeneratorRepository(
         baseUrl: baseUrl,
         anonKey: anonKey,
-        accessToken: accessToken,
+        tokenRepository: fakeTokenRepo,
         httpClient: mockClient,
       );
 
@@ -215,6 +242,28 @@ void main() {
       expect(enc3.opciones.length, equals(4));
     });
 
+    test('generarQuest sin token en TokenRepository lanza ApiException 401', () async {
+      final repo = HttpQuestGeneratorRepository(
+        baseUrl: baseUrl,
+        anonKey: anonKey,
+        tokenRepository: FakeTokenRepository(token: null),
+        httpClient: MockClient((_) async => http.Response('{}', 200)),
+      );
+
+      expect(
+        () => repo.generarQuest('recursión'),
+        throwsA(
+          isA<ApiException>()
+              .having(
+                (e) => e.mensaje,
+                'mensaje',
+                contains('Tu sesión expiró, vuelve a iniciar sesión.'),
+              )
+              .having((e) => e.statusCode, 'statusCode', equals(401)),
+        ),
+      );
+    });
+
     test('generarQuest con 401 lanza ApiException de sesión expirada', () async {
       final mockClient = MockClient((request) async {
         return http.Response(
@@ -226,7 +275,7 @@ void main() {
       final repo = HttpQuestGeneratorRepository(
         baseUrl: baseUrl,
         anonKey: anonKey,
-        accessToken: accessToken,
+        tokenRepository: fakeTokenRepo,
         httpClient: mockClient,
       );
 
@@ -261,7 +310,7 @@ void main() {
       final repo = HttpQuestGeneratorRepository(
         baseUrl: baseUrl,
         anonKey: anonKey,
-        accessToken: accessToken,
+        tokenRepository: fakeTokenRepo,
         httpClient: mockClient,
       );
 
@@ -287,7 +336,7 @@ void main() {
       final repo = HttpQuestGeneratorRepository(
         baseUrl: baseUrl,
         anonKey: anonKey,
-        accessToken: accessToken,
+        tokenRepository: fakeTokenRepo,
         httpClient: mockClient,
       );
 
@@ -318,7 +367,7 @@ void main() {
       final repo = HttpQuestGeneratorRepository(
         baseUrl: baseUrl,
         anonKey: anonKey,
-        accessToken: accessToken,
+        tokenRepository: fakeTokenRepo,
         httpClient: mockClient,
       );
 
@@ -351,7 +400,7 @@ void main() {
       final repo = HttpQuestGeneratorRepository(
         baseUrl: baseUrl,
         anonKey: anonKey,
-        accessToken: accessToken,
+        tokenRepository: fakeTokenRepo,
         httpClient: mockClient,
       );
 
