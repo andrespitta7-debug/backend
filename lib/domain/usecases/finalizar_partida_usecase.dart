@@ -20,19 +20,20 @@ class FinalizarPartidaUseCase {
     required Partida partida,
     required bool gano,
   }) async {
-    // Las asignaciones de estado y xp se hacen siempre (no dependen
-    // del flag).
     partida.estado = gano ? 'ganada' : 'perdida';
     partida.xpObtenida = gano ? xpPorVictoria : xpPorDerrota;
 
+    // SIEMPRE llamar al repo. En modo local guarda en SQLite. En modo
+    // remoto llama al Edge Function finalizar-partida (que además
+    // actualiza progreso_usuario en Postgres).
+    await _repo.guardarPartida(partida);
+
     if (!_guardarLocalmente) {
-      // Modo remoto: el backend ya persistió la partida y actualizó el
-      // progreso. Aquí no se hace nada más.
+      // Modo remoto: el backend ya actualizó el progreso.
       return;
     }
 
-    // Modo local: guardar en SQLite y actualizar progreso.
-    await _repo.guardarPartida(partida);
+    // Modo local: actualizar progreso manualmente en SQLite.
     final progreso = await _repo.obtenerProgreso(partida.idUsuario) ??
         ProgresoUsuario(idUsuario: partida.idUsuario);
 

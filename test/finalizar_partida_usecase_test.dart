@@ -58,7 +58,7 @@ void main() {
       expect(repo.progreso!.partidasJugadas, equals(1));
     });
 
-    test('con guardarLocalmente: false, NO llama al repositorio pero actualiza estado y xp de la partida', () async {
+    test('con guardarLocalmente: false, llama a guardarPartida pero NO a progreso', () async {
       final repo = FakePartidaRepository();
       final useCase = FinalizarPartidaUseCase(repo, guardarLocalmente: false);
 
@@ -70,7 +70,7 @@ void main() {
 
       await useCase.ejecutar(partida: partida, gano: false);
 
-      expect(repo.llamadasGuardarPartida, equals(0));
+      expect(repo.llamadasGuardarPartida, equals(1));
       expect(repo.llamadasObtenerProgreso, equals(0));
       expect(repo.llamadasActualizarProgreso, equals(0));
       expect(repo.progreso, isNull);
