@@ -161,3 +161,17 @@ export const RUN_SIN_POOL_SCHEMA = {
   },
   required: ['quest', 'preguntas_extra'],
 };
+
+export const ENCUENTROS_EXTRA_SCHEMA = {
+  type: 'object',
+  properties: {
+    encuentros: {
+      type: 'array',
+      description: 'Exactamente 3 preguntas pedagógicas extra numeradas consecutivamente',
+      minItems: 3,
+      maxItems: 3,
+      items: PREGUNTAS_EXTRA_SCHEMA.items,
+    }
+  },
+  required: ['encuentros']
+};
