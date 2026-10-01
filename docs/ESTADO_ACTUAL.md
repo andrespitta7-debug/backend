@@ -4,7 +4,7 @@ _Se actualiza al final de CADA sesión de trabajo (2 minutos). Va junto al
 Contexto Maestro al abrir un chat nuevo. Mantenerlo corto: si crece, mover lo
 antiguo a la bitácora._
 
-**Última actualización:** 30-sep-2026 **Último commit conocido:** efcd3d4
+**Última actualización:** 01-oct-2026 **Último commit conocido:** 791ea1a
 
 ---
 
@@ -58,6 +58,13 @@ antiguo a la bitácora._
   contraseñas en plano, delegando el Hash a `SqliteAuthRepository` localmente.
   Esto solucionó el fallo de login remoto con Supabase (que requiere plaintext).
   Todos los tests pasaron exitosamente.
+- **Edge Function `generar-quest` completada y probada.** Flujo
+  end-to-end Flutter/Postman → Edge Function → Groq → validación →
+  Postgres. Modelo `openai/gpt-oss-120b` (Groq free tier: 1000 RPD).
+  Caché de quests para reducir consumo. Commit `791ea1a`.
+- **Retry automático y factory de proveedores.** Diseño preparado
+  para alternar entre Groq y Gemini sin tocar código, solo con la
+  variable de entorno `AI_PROVIDER`.
 
 ## En curso
 
@@ -190,4 +197,5 @@ y el docente: `feature/SYSQ-XX` → `dev` → `preprod` → `main`. |
 | 29-sep-2026    | Edge Function `register` completada y probada. Registra en Supabase Auth + crea perfil + progreso en una llamada. 6 casos verificados en Postman. Commit `4e2b1ff`.                                    | Avance del roadmap backend                                                                                     |
 | 29-sep-2026    | Edge Function `login` completada y probada. Devuelve JWT + perfil + progreso. 4 casos en Postman (200, 401, 400, 405). Commit `ed0cea9`.                                                               | Avance del roadmap backend                                                                                     |
 | 30-sep-2026    | Refinamiento visual (CombateScreen con estilo retro y animaciones) y Fix de AuthRepository (cambio de contrato a contraseñas en plano para soportar login con Supabase nativamente sin romper SQLite). | Mejorar inmersión de usuario y solucionar bug de 'contraseña incorrecta' por culpa del hash a nivel Dominio.   |
+| 01-oct-2026    | Edge Function `generar-quest` completada y probada end-to-end. Groq (modelo `openai/gpt-oss-120b`) como proveedor IA principal. Caché de quests implementado. Puerto abstracto `AiProvider` para futuros proveedores. Commit `791ea1a`. | Cierre del Sub-paso 2b: generación de quests con IA funcionando gratis |
 | _(fecha)_      | _(siguiente entrada)_                                                                                                                                                                                  |                                                                                                                |
