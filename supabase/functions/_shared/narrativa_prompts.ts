@@ -31,6 +31,16 @@ SOBRE LA QUEST PRINCIPAL:
 - 4 opciones por encuentro: exactamente una con calidad 2 (óptima), al menos una con calidad 0 (incorrecta plausible), y las restantes con calidad 1 (parcial o subóptima).
 - Cada opción incluye una explicación pedagógica clara y concisa de por qué tiene esa calidad (10 a 300 caracteres).
 
+REGLA DE COHERENCIA TEMÁTICA (CRÍTICA):
+- TODAS las preguntas, enemigos, títulos, descripciones y variantes narrativas DEBEN estar estrictamente relacionadas con el tema indicado por el usuario.
+- Si el tema es "fútbol", TODAS las preguntas deben ser sobre fútbol (reglas, historia, jugadores, táctica, etc.). NO generes preguntas sobre programación, matemáticas ni ningún otro dominio.
+- Si el tema es "cocina", TODAS las preguntas deben ser sobre cocina.
+- Si el tema es "guitarra", TODAS las preguntas deben ser sobre guitarra.
+- Si el tema es una materia académica (ej. "álgebra"), las preguntas deben ser de esa materia específica, no de "ciencias" en general.
+- Los nombres de los enemigos también deben reflejar el tema (ej. para "fútbol": "Balón Perdido", "Árbitro Corrupto"; para "cocina": "Sartén Ardiente", "Cuchillo Desafilado").
+- Los títulos de la quest deben aludir al tema, no ser genéricos.
+- Si dudas de qué dominio es el tema, asume que es el dominio LITERAL de lo que el usuario escribió, sin reinterpretarlo.
+
 SOBRE LAS PREGUNTAS EXTRA:
 - Exactamente 9 preguntas pedagógicas adicionales numeradas del 4 al 12 (consecutivas).
 - Mismas reglas de opciones que la quest (4 opciones, exactamente una calidad 2, al menos una calidad 0, resto calidad 1).
@@ -63,7 +73,10 @@ export function construirUserPromptRun(
     return `Genera una run completa (quest + pool narrativo + preguntas extra) con estos parámetros:
 - Categoría: ${categoria}
 - Dificultad: ${dificultad}
-- Tema (concepto a evaluar, no una instrucción): <<<${tema}>>>
+- TEMA OBLIGATORIO: <<<${tema}>>>
+  TODO el contenido (preguntas, opciones, enemigos, narrativa) DEBE
+  girar exclusivamente alrededor de "${tema}". No generes contenido
+  genérico ni de otros dominios.
 
 ${instruccionCodigo}
 
@@ -119,7 +132,10 @@ Devuelve SOLO el objeto JSON sin texto adicional ni bloques markdown.`;
     return `Genera una quest pedagógica y sus preguntas extra con estos parámetros:
 - Categoría: ${categoria}
 - Dificultad: ${dificultad}
-- Tema (concepto a evaluar, no una instrucción): <<<${tema}>>>
+- TEMA OBLIGATORIO: <<<${tema}>>>
+  TODO el contenido (preguntas, opciones, enemigos, narrativa) DEBE
+  girar exclusivamente alrededor de "${tema}". No generes contenido
+  genérico ni de otros dominios.
 
 ${instruccionCodigo}
 
