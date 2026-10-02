@@ -6,13 +6,10 @@ import 'package:provider/provider.dart';
 
 import '../../../domain/entities/encuentro.dart';
 import '../../../domain/entities/opcion_encuentro.dart';
-import '../../../domain/usecases/auth_usecases.dart';
 import '../../../domain/usecases/finalizar_partida_usecase.dart';
 import '../../../domain/usecases/responder_encuentro_usecase.dart';
 import '../../../domain/entities/quest_completa.dart';
 import '../../theme/app_theme.dart';
-import '../auth/auth_controller.dart';
-import '../auth/login_screen.dart';
 import '../progreso/progreso_screen.dart';
 import 'combate_controller.dart';
 
@@ -145,19 +142,63 @@ class _CombateScreenState extends State<CombateScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        final controller = _controller;
+        if (controller == null || controller.combateTerminado) {
+          Navigator.of(context).pop();
+          return;
+        }
+        _mostrarMenuPausa(context);
+      },
+      child: Scaffold(
+        appBar: AppBar(
         title: const Text('SysQuest'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.pause),
-            tooltip: 'Pausa',
-            onPressed: () => _mostrarMenuPausa(context),
-          ),
-          TextButton.icon(
-            onPressed: _cerrarSesion,
-            icon: const Icon(Icons.logout),
-            label: const Text('Cerrar sesión'),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _mostrarMenuPausa(context),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.superficieNoche,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppTheme.doradoCritico.withValues(alpha: 0.8),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.doradoCritico.withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.pause, color: AppTheme.doradoCritico, size: 18),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'PAUSA',
+                        style: TextStyle(
+                          fontFamily: 'PressStart2P',
+                          fontSize: 9,
+                          color: AppTheme.doradoCritico,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -212,66 +253,102 @@ class _CombateScreenState extends State<CombateScreen>
           );
         },
       ),
-    );
-  }
-
-  Future<void> _cerrarSesion() async {
-    await context.read<CerrarSesionUseCase>().ejecutar();
-    if (!mounted) return;
-    context.read<AuthController>().cerrarSesion();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
+    ));
   }
 
   void _mostrarMenuPausa(BuildContext context) {
     final controller = _controller;
     if (controller == null) return;
-    controller.pausarCombate();
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppTheme.superficieNoche,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppTheme.superficieElevada, width: 2),
-          ),
-          title: const Text(
-            'Combate Pausado',
-            style: TextStyle(fontFamily: 'PressStart2P', color: AppTheme.azulTexto, fontSize: 16),
-          ),
-          content: const Text(
-            '¿Deseas continuar la batalla o retirarte?',
-            style: TextStyle(color: AppTheme.azulTexto),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                controller.continuarCombate();
-              },
-              child: const Text('Continuar', style: TextStyle(color: AppTheme.verdeVida)),
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.superficieNoche,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.doradoCritico, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.doradoCritico.withValues(alpha: 0.3),
+                  blurRadius: 24,
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await controller.retirarse();
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Te has retirado de la partida.'),
-                    backgroundColor: AppTheme.rojoDanio,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'PAUSA',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'PressStart2P',
+                    fontSize: 18,
+                    color: AppTheme.doradoCritico,
                   ),
-                );
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              },
-              child: const Text('Retirarse', style: TextStyle(color: AppTheme.rojoDanio)),
+                ),
+                const SizedBox(height: 20),
+                _FilaStatPausa(
+                  icono: Icons.star,
+                  etiqueta: 'Score',
+                  valor: '${controller.score}',
+                ),
+                const SizedBox(height: 10),
+                _FilaStatPausa(
+                  icono: Icons.flag,
+                  etiqueta: 'Ronda',
+                  valor: '${controller.ronda}',
+                ),
+                const SizedBox(height: 10),
+                _FilaStatPausa(
+                  icono: Icons.whatshot,
+                  etiqueta: 'Enemigos derrotados',
+                  valor: '${controller.enemigosDerrotados}',
+                ),
+                const SizedBox(height: 10),
+                _FilaStatPausa(
+                  icono: Icons.favorite,
+                  etiqueta: 'Vida',
+                  valor: '${controller.vidaJugador}/100',
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    controller.continuarCombate();
+                  },
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Continuar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.verdeVida,
+                    foregroundColor: AppTheme.fondoNoche,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    Navigator.of(dialogContext).pop();
+                    await controller.retirarse();
+                    if (!mounted) return;
+                    Navigator.of(this.context).popUntil((route) => route.isFirst);
+                  },
+                  icon: const Icon(Icons.exit_to_app),
+                  label: const Text('Retirarse de la run'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.rojoDanio,
+                    side: const BorderSide(color: AppTheme.rojoDanio, width: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -1129,6 +1206,55 @@ class _AvatarCombateState extends State<_AvatarCombate> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _FilaStatPausa extends StatelessWidget {
+  final IconData icono;
+  final String etiqueta;
+  final String valor;
+
+  const _FilaStatPausa({
+    required this.icono,
+    required this.etiqueta,
+    required this.valor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.superficieElevada,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppTheme.azulTexto.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icono, color: AppTheme.azulTexto, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              etiqueta,
+              style: const TextStyle(
+                color: AppTheme.azulTexto,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Text(
+            valor,
+            style: const TextStyle(
+              fontFamily: 'PressStart2P',
+              fontSize: 12,
+              color: AppTheme.doradoCritico,
+            ),
+          ),
+        ],
       ),
     );
   }

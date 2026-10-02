@@ -45,6 +45,14 @@ class CombateController extends ChangeNotifier {
   int vidaEnemigo = 30;
   String? mensajeUltimoTurno;
   String? mensajeNarrativoActual;
+  int _score = 0;
+  int _enemigosDerrotados = 0;
+  int _ronda = 1;
+
+  int get score => _score;
+  int get enemigosDerrotados => _enemigosDerrotados;
+  int get ronda => _ronda;
+
   final List<String> _historialNarrativo = [];
   List<String> get historialNarrativo => List.unmodifiable(_historialNarrativo);
   ResultadoCombate? resultadoUltimoTurno;
@@ -170,6 +178,9 @@ class CombateController extends ChangeNotifier {
     resultadoUltimoTurno = null;
     mensajeUltimoTurno = null;
     vidaJugador = 100;
+    _score = 0;
+    _enemigosDerrotados = 0;
+    _ronda = 1;
     turnoEnProceso = false;
     _poolNarrativo = poolNarrativo != null ? Map<String, dynamic>.from(poolNarrativo) : null;
     _preguntasExtra = preguntasExtra != null ? List<Encuentro>.from(preguntasExtra) : [];
@@ -238,9 +249,11 @@ class CombateController extends ChangeNotifier {
     switch (resultado.resultado) {
       case ResultadoTurno.critico:
         mensajeUltimoTurno = '¡Golpe crítico! -${resultado.danoAlEnemigo} HP al enemigo';
+        _score += 125;
         break;
       case ResultadoTurno.acierto:
         mensajeUltimoTurno = 'Correcto. -${resultado.danoAlEnemigo} HP al enemigo';
+        _score += 100;
         break;
       case ResultadoTurno.fallo:
         mensajeUltimoTurno = 'Incorrecto. El enemigo contraataca: -${resultado.danoAlJugador} HP';
@@ -260,6 +273,11 @@ class CombateController extends ChangeNotifier {
       _setMensajeNarrativo(_consumirFragmentoNarrativo('muerte'));
       _finalizarPartida(gano: false);
     } else if (vidaEnemigo <= 0) {
+      _enemigosDerrotados += 1;
+      if (_enemigosDerrotados % 3 == 0) {
+        _ronda += 1;
+        _score += 500;
+      }
       final hayMasEncuentros = _indiceActual + 1 < _encuentros.length;
       if (hayMasEncuentros) {
         encuentroSuperado = true;
@@ -359,7 +377,7 @@ class CombateController extends ChangeNotifier {
     guardandoResultado = true;
     notifyListeners();
     _partida.encuentroActual = _indiceActual;
-    _partida.score = gano ? 100 : 0;
+    _partida.score = _score;
     await _finalizarUseCase.ejecutar(partida: _partida, gano: gano);
     guardandoResultado = false;
     notifyListeners();
