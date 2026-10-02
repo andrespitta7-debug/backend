@@ -59,63 +59,64 @@ class MenuPrincipalScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: 28),
-              _MenuCard(
-                icon: Icons.shield_outlined,
-                accent: AppTheme.doradoCritico,
-                title: 'Quest del sistema',
-                subtitle:
-                    'Juega la quest de prueba y pon a prueba tus habilidades.',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CombateScreen(
-                      idQuest: '00000000-0000-0000-0000-000000000001',
-                      idUsuario: usuario.idUsuario,
+              GridView.count(
+                crossAxisCount: 2,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+                childAspectRatio: 0.95,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _MenuCard(
+                    icon: Icons.shield_outlined,
+                    accent: AppTheme.doradoCritico,
+                    title: 'Quest del sistema',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CombateScreen(
+                          idQuest: '00000000-0000-0000-0000-000000000001',
+                          idUsuario: usuario.idUsuario,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              _MenuCard(
-                icon: Icons.auto_awesome,
-                accent: AppTheme.verdeVida,
-                title: 'Nueva quest con IA',
-                subtitle:
-                    'Escribe un tema y genera una aventura personalizada.',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        GenerarQuestScreen(idUsuario: usuario.idUsuario),
+                  _MenuCard(
+                    icon: Icons.auto_awesome,
+                    accent: AppTheme.verdeVida,
+                    title: 'Nueva quest con IA',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            GenerarQuestScreen(idUsuario: usuario.idUsuario),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              _MenuCard(
-                icon: Icons.insights_outlined,
-                accent: AppTheme.azulTexto,
-                title: 'Mi progreso',
-                subtitle: 'Consulta tus victorias, experiencia y nivel actual.',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        ProgresoScreen(idUsuario: usuario.idUsuario),
+                  _MenuCard(
+                    icon: Icons.insights_outlined,
+                    accent: AppTheme.azulTexto,
+                    title: 'Mi progreso',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ProgresoScreen(idUsuario: usuario.idUsuario),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              _MenuCard(
-                icon: Icons.person_outline,
-                accent: AppTheme.azulTexto,
-                title: 'Mi perfil',
-                subtitle: 'Consulta y edita tus datos personales.',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PerfilScreen(usuario: usuario),
+                  _MenuCard(
+                    icon: Icons.person_outline,
+                    accent: AppTheme.azulTexto,
+                    title: 'Mi perfil',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PerfilScreen(usuario: usuario),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
               const SizedBox(height: 28),
               OutlinedButton.icon(
@@ -135,14 +136,12 @@ class _MenuCard extends StatelessWidget {
   final IconData icon;
   final Color accent;
   final String title;
-  final String subtitle;
   final VoidCallback onTap;
 
   const _MenuCard({
     required this.icon,
     required this.accent,
     required this.title,
-    required this.subtitle,
     required this.onTap,
   });
 
@@ -153,12 +152,13 @@ class _MenuCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 52,
-                height: 52,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(12),
@@ -166,22 +166,12 @@ class _MenuCard extends StatelessWidget {
                 ),
                 child: Icon(icon, color: accent, size: 28),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 5),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(width: 8),
-              Icon(Icons.chevron_right, color: accent),
             ],
           ),
         ),
