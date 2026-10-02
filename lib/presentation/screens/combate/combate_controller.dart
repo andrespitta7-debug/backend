@@ -149,7 +149,7 @@ class CombateController extends ChangeNotifier {
   void _setMensajeNarrativo(String? mensaje) {
     mensajeNarrativoActual = mensaje;
     if (mensaje != null) {
-      _historialNarrativo.add(mensaje);
+      _historialNarrativo.insert(0, mensaje);
     }
   }
 

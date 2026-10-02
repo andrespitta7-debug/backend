@@ -16,6 +16,11 @@ import '../auth/login_screen.dart';
 import '../progreso/progreso_screen.dart';
 import 'combate_controller.dart';
 
+enum _PosicionCombate { jugador, enemigo }
+
+const _emojiJugador = '🧙';
+const _emojiEnemigo = '👾';
+
 class CombateScreen extends StatefulWidget {
   final String idQuest;
   final String idUsuario;
@@ -337,7 +342,7 @@ class _CombateContenido extends StatelessWidget {
           _EnemigoCard(
             categoria: categoria,
             nombre: 'Encuentro ${encuentro.numero}',
-            vida: controller.vidaEnemigo,
+            vida: context.watch<CombateController>().vidaEnemigo,
             vidaMaxima: encuentro.vidaEnemigo,
             esJefe: encuentro.esJefe,
             temblor: temblorEnemigo,
@@ -361,6 +366,22 @@ class _CombateContenido extends StatelessWidget {
               onVerProgreso: onVerProgreso,
             )
           else ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _AvatarCombate(
+                  emoji: _emojiJugador,
+                  posicion: _PosicionCombate.jugador,
+                  animacionActiva: controller.resultadoUltimoTurno,
+                ),
+                _AvatarCombate(
+                  emoji: _emojiEnemigo,
+                  posicion: _PosicionCombate.enemigo,
+                  animacionActiva: controller.resultadoUltimoTurno,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             _DialogoPregunta(pregunta: encuentro.pregunta),
             const SizedBox(height: 16),
             _BarraVidaJugador(
@@ -400,50 +421,7 @@ class _CombateContenido extends StatelessWidget {
 
             // Consola narrativa (estilo Dwarf Fortress)
             const SizedBox(height: 16),
-            Container(
-              height: 180,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.superficieNoche,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: AppTheme.superficieElevada,
-                  width: 2,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '> HISTORIAL DE LA RUN',
-                    style: TextStyle(
-                      fontFamily: 'PressStart2P',
-                      fontSize: 10,
-                      color: AppTheme.azulTexto,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: controller.historialNarrativo.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Text(
-                            '> ${controller.historialNarrativo[index]}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.azulTexto.withValues(alpha: 0.85),
-                              height: 1.4,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _ConsolaNarrativa(historial: controller.historialNarrativo),
           ],
         ],
       ),
@@ -986,6 +964,171 @@ class _PanelNarrativo extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ConsolaNarrativa extends StatefulWidget {
+  final List<String> historial;
+  const _ConsolaNarrativa({required this.historial});
+  
+  @override
+  State<_ConsolaNarrativa> createState() => _ConsolaNarrativaState();
+}
+
+class _ConsolaNarrativaState extends State<_ConsolaNarrativa> {
+  bool _expandida = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.superficieNoche,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.superficieElevada, width: 2),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expandida = !_expandida),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '> HISTORIAL DE LA RUN',
+                    style: TextStyle(
+                      fontFamily: 'PressStart2P',
+                      fontSize: 10,
+                      color: AppTheme.azulTexto,
+                    ),
+                  ),
+                  Icon(
+                    _expandida ? Icons.expand_less : Icons.expand_more,
+                    color: AppTheme.azulTexto,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ClipRect(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              height: _expandida ? 180 : 0,
+              padding: _expandida
+                  ? const EdgeInsets.fromLTRB(12, 0, 12, 12)
+                  : EdgeInsets.zero,
+              child: ListView.builder(
+                itemCount: widget.historial.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      '> ${widget.historial[index]}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.azulTexto.withValues(alpha: 0.85),
+                        height: 1.4,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AvatarCombate extends StatefulWidget {
+  final String emoji;
+  final _PosicionCombate posicion;
+  final ResultadoCombate? animacionActiva;
+
+  const _AvatarCombate({
+    required this.emoji,
+    required this.posicion,
+    required this.animacionActiva,
+  });
+
+  @override
+  State<_AvatarCombate> createState() => _AvatarCombateState();
+}
+
+class _AvatarCombateState extends State<_AvatarCombate> {
+  double _desplazamiento = 0;
+  ResultadoCombate? _ultimoResultadoProcesado;
+  Timer? _timerAnimacion;
+
+  @override
+  void didUpdateWidget(covariant _AvatarCombate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animacionActiva != null &&
+        widget.animacionActiva != _ultimoResultadoProcesado) {
+      _ultimoResultadoProcesado = widget.animacionActiva;
+      _activarAnimacion(widget.animacionActiva!);
+    }
+  }
+
+  @override
+  void dispose() {
+    _timerAnimacion?.cancel();
+    super.dispose();
+  }
+
+  void _activarAnimacion(ResultadoCombate resultado) {
+    final esAcierto = resultado.resultado == ResultadoTurno.acierto ||
+        resultado.resultado == ResultadoTurno.critico;
+    final esFallo = resultado.resultado == ResultadoTurno.fallo;
+
+    _timerAnimacion?.cancel();
+
+    if (esAcierto && widget.posicion == _PosicionCombate.jugador) {
+      setState(() => _desplazamiento = 50);
+      _timerAnimacion = Timer(const Duration(milliseconds: 200), () {
+        if (mounted) setState(() => _desplazamiento = 0);
+      });
+    } else if (esFallo && widget.posicion == _PosicionCombate.enemigo) {
+      setState(() => _desplazamiento = -50);
+      _timerAnimacion = Timer(const Duration(milliseconds: 200), () {
+        if (mounted) setState(() => _desplazamiento = 0);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: SizedBox(
+        width: 120,
+        height: 60,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: widget.posicion == _PosicionCombate.jugador
+              ? Alignment.centerLeft
+              : Alignment.centerRight,
+          children: [
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              left: widget.posicion == _PosicionCombate.jugador ? _desplazamiento : null,
+              right: widget.posicion == _PosicionCombate.enemigo ? -_desplazamiento : null,
+              top: 0,
+              bottom: 0,
+              width: 60,
+              child: Center(
+                child: Text(
+                  widget.emoji,
+                  style: const TextStyle(fontSize: 48),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
