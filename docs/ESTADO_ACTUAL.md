@@ -210,3 +210,4 @@ y el docente: `feature/SYSQ-XX` → `dev` → `preprod` → `main`. |
 | 2026-10-01 | Coherencia tematica reforzada en prompts: la IA ahora respeta estrictamente el tema indicado. | Bloque 1 |
 | 2026-10-01 | Bug de vida del enemigo resuelto (context.watch). Consola narrativa invertida (ultimo evento arriba) y plegable con AnimatedContainer. | Bloque 2 |
 | 2026-10-01 | Animacion de ataque/contraataque con emojis temporales (jugador avanza al acertar, enemigo avanza al fallar). | Bloque 3 |
+| 2026-10-01 | Pausa pulida: PopScope (back button abre modal), boton pixel-art con estilo dorado, modal con stats en vivo (Score/Ronda/Enemigos/Vida). Score acumulado en el controller: +100 acierto, +125 critico, +500 por ronda (cada 3 enemigos). | Bloque 4 |
