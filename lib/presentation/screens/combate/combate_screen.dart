@@ -9,6 +9,7 @@ import '../../../domain/entities/opcion_encuentro.dart';
 import '../../../domain/usecases/finalizar_partida_usecase.dart';
 import '../../../domain/usecases/responder_encuentro_usecase.dart';
 import '../../../domain/entities/quest_completa.dart';
+import '../../../domain/entities/wildcard.dart';
 import '../../theme/app_theme.dart';
 import '../progreso/progreso_screen.dart';
 import 'combate_controller.dart';
@@ -467,7 +468,44 @@ class _CombateContenido extends StatelessWidget {
               danioKey: danioJugadorKey,
             ),
             const SizedBox(height: 16),
-            ...encuentro.opciones.map(
+            _FilaWildcards(
+              wildcards: controller.wildcards,
+              pistaActiva: controller.pistaActiva,
+              golpeDobleActivo: controller.golpeDobleActivo,
+              roboDeVidaActivo: controller.roboDeVidaActivo,
+              turnoEnProceso: turnoEnProceso,
+              onUsarWildcard: controller.usarWildcard,
+            ),
+            const SizedBox(height: 16),
+            if (controller.pistaActiva != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.doradoCritico.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.doradoCritico.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    const Text('💡', style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        controller.pistaActiva!,
+                        style: const TextStyle(
+                          color: AppTheme.doradoCritico,
+                          fontStyle: FontStyle.italic,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ...encuentro.opciones
+                .where((op) => !controller.opcionesOcultas.contains(op.texto))
+                .map(
               (opcion) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: _OpcionButton(
@@ -1255,6 +1293,110 @@ class _FilaStatPausa extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FilaWildcards extends StatelessWidget {
+  final Map<TipoWildcard, int> wildcards;
+  final String? pistaActiva;
+  final bool golpeDobleActivo;
+  final bool roboDeVidaActivo;
+  final bool turnoEnProceso;
+  final ValueChanged<TipoWildcard> onUsarWildcard;
+
+  const _FilaWildcards({
+    required this.wildcards,
+    required this.pistaActiva,
+    required this.golpeDobleActivo,
+    required this.roboDeVidaActivo,
+    required this.turnoEnProceso,
+    required this.onUsarWildcard,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: TipoWildcard.values.map((tipo) {
+        final cantidad = wildcards[tipo] ?? 0;
+        final activa = _esActiva(tipo);
+        return _WildcardButton(
+          tipo: tipo,
+          cantidad: cantidad,
+          activa: activa,
+          habilitada: cantidad > 0 && !turnoEnProceso,
+          onPressed: () => onUsarWildcard(tipo),
+        );
+      }).toList(),
+    );
+  }
+
+  bool _esActiva(TipoWildcard tipo) {
+    if (tipo == TipoWildcard.pista) return pistaActiva != null;
+    if (tipo == TipoWildcard.golpeDoble) return golpeDobleActivo;
+    if (tipo == TipoWildcard.roboDeVida) return roboDeVidaActivo;
+    return false;
+  }
+}
+
+class _WildcardButton extends StatelessWidget {
+  final TipoWildcard tipo;
+  final int cantidad;
+  final bool activa;
+  final bool habilitada;
+  final VoidCallback onPressed;
+
+  const _WildcardButton({
+    required this.tipo,
+    required this.cantidad,
+    required this.activa,
+    required this.habilitada,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final w = Wildcard(tipo: tipo, cantidad: cantidad);
+    final color = activa
+        ? AppTheme.verdeVida
+        : (habilitada ? AppTheme.doradoCritico : AppTheme.superficieElevada);
+
+    return Tooltip(
+      message: w.descripcion,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: habilitada ? onPressed : null,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.superficieNoche,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: color, width: 2),
+              boxShadow: activa
+                  ? [BoxShadow(color: AppTheme.verdeVida.withValues(alpha: 0.4), blurRadius: 12)]
+                  : null,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(w.emoji, style: const TextStyle(fontSize: 20)),
+                const SizedBox(height: 2),
+                Text(
+                  'x$cantidad',
+                  style: TextStyle(
+                    fontFamily: 'PressStart2P',
+                    fontSize: 9,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

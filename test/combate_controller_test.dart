@@ -11,6 +11,7 @@ import 'package:sysquest_app/domain/usecases/finalizar_partida_usecase.dart';
 import 'package:sysquest_app/domain/usecases/responder_encuentro_usecase.dart';
 import 'package:sysquest_app/domain/repositories/quest_generator_repository.dart';
 import 'package:sysquest_app/domain/usecases/generar_encuentros_extra_usecase.dart';
+import 'package:sysquest_app/domain/entities/wildcard.dart';
 import 'package:sysquest_app/presentation/screens/combate/combate_controller.dart';
 
 class FakeQuestRepository implements QuestRepository {
@@ -338,6 +339,142 @@ void main() {
       expect(controller.combateTerminado, isTrue);
       expect(controller.jugadorGano, isFalse);
       expect(controller.mensajeNarrativoActual, equals('Te retiras tácticamente para luchar otro día.'));
+    });
+    test('usarWildcard reduce la cantidad en 1', () async {
+      final repoQuest = FakeQuestRepository([encuentroNormal1]);
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(FakePartidaRepository()),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
+      );
+      await controller.cargarQuest('q-1', 'u-1');
+
+      expect(controller.wildcards[TipoWildcard.roboDeVida], equals(1));
+      await controller.usarWildcard(TipoWildcard.roboDeVida);
+      expect(controller.wildcards[TipoWildcard.roboDeVida], equals(0));
+      expect(controller.roboDeVidaActivo, isTrue);
+    });
+
+    test('usarWildcard con cantidad 0 no hace nada', () async {
+      final repoQuest = FakeQuestRepository([encuentroNormal1]);
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(FakePartidaRepository()),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
+      );
+      await controller.cargarQuest('q-1', 'u-1');
+
+      await controller.usarWildcard(TipoWildcard.roboDeVida);
+      expect(controller.wildcards[TipoWildcard.roboDeVida], equals(0));
+      // Try again
+      await controller.usarWildcard(TipoWildcard.roboDeVida);
+      expect(controller.wildcards[TipoWildcard.roboDeVida], equals(0)); // Still 0
+    });
+
+    test('50/50 oculta 2 opciones incorrectas', () async {
+      final opcionMala1 = OpcionEncuentro(idOpcion: 'op-2', idEncuentro: 'enc-1', letra: 'B', texto: 'Mala 1', calidad: 0);
+      final opcionMala2 = OpcionEncuentro(idOpcion: 'op-3', idEncuentro: 'enc-1', letra: 'C', texto: 'Mala 2', calidad: 0);
+      final opcionMala3 = OpcionEncuentro(idOpcion: 'op-4', idEncuentro: 'enc-1', letra: 'D', texto: 'Mala 3', calidad: 1);
+      final encuentro4Ops = Encuentro(
+        idEncuentro: 'enc-1', idQuest: 'q-1', numero: 1, pregunta: 'P', dificultad: 'facil', tipoEncuentro: 'normal', vidaEnemigo: 50,
+        opciones: [opcionCritica, opcionMala1, opcionMala2, opcionMala3],
+      );
+
+      final repoQuest = FakeQuestRepository([encuentro4Ops]);
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(FakePartidaRepository()),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
+      );
+      await controller.cargarQuest('q-1', 'u-1');
+
+      expect(controller.opcionesOcultas.isEmpty, isTrue);
+      await controller.usarWildcard(TipoWildcard.cincuentaCincuenta);
+      expect(controller.opcionesOcultas.length, equals(2));
+      expect(controller.opcionesOcultas.contains(opcionCritica.texto), isFalse);
+    });
+
+    test('golpe doble hace daño x2 en el próximo acierto', () async {
+      final repoQuest = FakeQuestRepository([encuentroNormal1]);
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(FakePartidaRepository()),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
+        duracionPausaTurno: Duration.zero,
+      );
+      await controller.cargarQuest('q-1', 'u-1');
+
+      await controller.usarWildcard(TipoWildcard.golpeDoble);
+      expect(controller.golpeDobleActivo, isTrue);
+
+      await controller.elegirOpcion(opcionCritica);
+      // Critico base es 25. x2 = 50. Enemigo inicial tiene 50. Debería quedar en 0.
+      expect(controller.vidaEnemigo, equals(0));
+      expect(controller.golpeDobleActivo, isFalse);
+    });
+
+    test('robo de vida cura 10 HP en el próximo acierto', () async {
+      final repoQuest = FakeQuestRepository([encuentroNormal1]);
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(FakePartidaRepository()),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
+        duracionPausaTurno: Duration.zero,
+      );
+      await controller.cargarQuest('q-1', 'u-1');
+
+      controller.vidaJugador = 50; // Set to 50 directly for test
+
+      await controller.usarWildcard(TipoWildcard.roboDeVida);
+      expect(controller.roboDeVidaActivo, isTrue);
+
+      await controller.elegirOpcion(opcionCritica);
+      expect(controller.vidaJugador, equals(60)); // 50 + 10
+      expect(controller.roboDeVidaActivo, isFalse);
+    });
+
+    test('cada 3 enemigos derrotados se otorga 1 wildcard', () async {
+      final e2 = Encuentro(
+        idEncuentro: 'enc-2', idQuest: 'q-1', numero: 2, pregunta: 'P', dificultad: 'facil', tipoEncuentro: 'normal', vidaEnemigo: 50,
+        opciones: [opcionCritica],
+      );
+      final e3 = Encuentro(
+        idEncuentro: 'enc-3', idQuest: 'q-1', numero: 3, pregunta: 'P', dificultad: 'facil', tipoEncuentro: 'normal', vidaEnemigo: 50,
+        opciones: [opcionCritica],
+      );
+      final repoQuest = FakeQuestRepository([encuentroNormal1, e2, e3]);
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(FakePartidaRepository()),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
+        duracionPausaTurno: Duration.zero,
+      );
+      await controller.cargarQuest('q-1', 'u-1');
+
+      // Gastamos todos los wildcards para ver el incremento
+      for (final tipo in TipoWildcard.values) {
+        await controller.usarWildcard(tipo);
+      }
+      
+      final totalAntes = TipoWildcard.values.map((t) => controller.wildcards[t]!).reduce((a, b) => a + b);
+      expect(totalAntes, equals(0));
+
+      // Derrotar 3 enemigos (cada uno tiene 50 HP, 2 criticos lo matan)
+      for (int i = 0; i < 3; i++) {
+        await controller.elegirOpcion(opcionCritica);
+        await controller.elegirOpcion(opcionCritica);
+        controller.continuarSiguienteEncuentro();
+      }
+
+      // Check wildcards
+      final totalDespues = TipoWildcard.values.map((t) => controller.wildcards[t]!).reduce((a, b) => a + b);
+      expect(totalDespues, equals(1)); // Se otorgó 1
     });
   });
 }

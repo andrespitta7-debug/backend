@@ -10,6 +10,7 @@ import '../../../domain/repositories/quest_repository.dart';
 import '../../../domain/usecases/finalizar_partida_usecase.dart';
 import '../../../domain/usecases/generar_encuentros_extra_usecase.dart';
 import '../../../domain/usecases/responder_encuentro_usecase.dart';
+import '../../../domain/entities/wildcard.dart';
 
 class CombateController extends ChangeNotifier {
   final QuestRepository _questRepository;
@@ -52,6 +53,18 @@ class CombateController extends ChangeNotifier {
   int get score => _score;
   int get enemigosDerrotados => _enemigosDerrotados;
   int get ronda => _ronda;
+
+  final Map<TipoWildcard, int> _wildcards = {};
+  final Set<String> _opcionesOcultas = {};
+  bool _golpeDobleActivo = false;
+  bool _roboDeVidaActivo = false;
+  String? _pistaActiva;
+
+  Map<TipoWildcard, int> get wildcards => Map.unmodifiable(_wildcards);
+  Set<String> get opcionesOcultas => Set.unmodifiable(_opcionesOcultas);
+  bool get golpeDobleActivo => _golpeDobleActivo;
+  bool get roboDeVidaActivo => _roboDeVidaActivo;
+  String? get pistaActiva => _pistaActiva;
 
   final List<String> _historialNarrativo = [];
   List<String> get historialNarrativo => List.unmodifiable(_historialNarrativo);
@@ -182,6 +195,15 @@ class CombateController extends ChangeNotifier {
     _enemigosDerrotados = 0;
     _ronda = 1;
     turnoEnProceso = false;
+
+    _wildcards.clear();
+    for (final tipo in TipoWildcard.values) {
+      _wildcards[tipo] = 1;
+    }
+    _opcionesOcultas.clear();
+    _golpeDobleActivo = false;
+    _roboDeVidaActivo = false;
+    _pistaActiva = null;
     _poolNarrativo = poolNarrativo != null ? Map<String, dynamic>.from(poolNarrativo) : null;
     _preguntasExtra = preguntasExtra != null ? List<Encuentro>.from(preguntasExtra) : [];
     notifyListeners();
@@ -243,16 +265,32 @@ class CombateController extends ChangeNotifier {
       esJefe: enemigoActual.esJefe,
     );
     resultadoUltimoTurno = resultado;
-    vidaEnemigo = (vidaEnemigo - resultado.danoAlEnemigo).clamp(0, 999);
+
+    final aplicaGolpeDoble = _golpeDobleActivo;
+    final aplicaRoboDeVida = _roboDeVidaActivo;
+
+    var danioAlEnemigoFinal = resultado.danoAlEnemigo;
+    if (aplicaGolpeDoble && resultado.danoAlEnemigo > 0) {
+      danioAlEnemigoFinal *= 2;
+    }
+
+    vidaEnemigo = (vidaEnemigo - danioAlEnemigoFinal).clamp(0, 999);
     vidaJugador = (vidaJugador - resultado.danoAlJugador).clamp(0, 999);
+
+    final esAciertoOCritico = resultado.resultado == ResultadoTurno.acierto ||
+        resultado.resultado == ResultadoTurno.critico;
+
+    if (aplicaRoboDeVida && esAciertoOCritico) {
+      vidaJugador = (vidaJugador + 10).clamp(0, 100);
+    }
 
     switch (resultado.resultado) {
       case ResultadoTurno.critico:
-        mensajeUltimoTurno = '¡Golpe crítico! -${resultado.danoAlEnemigo} HP al enemigo';
+        mensajeUltimoTurno = '¡Golpe crítico! -$danioAlEnemigoFinal HP al enemigo';
         _score += 125;
         break;
       case ResultadoTurno.acierto:
-        mensajeUltimoTurno = 'Correcto. -${resultado.danoAlEnemigo} HP al enemigo';
+        mensajeUltimoTurno = 'Correcto. -$danioAlEnemigoFinal HP al enemigo';
         _score += 100;
         break;
       case ResultadoTurno.fallo:
@@ -277,6 +315,7 @@ class CombateController extends ChangeNotifier {
       if (_enemigosDerrotados % 3 == 0) {
         _ronda += 1;
         _score += 500;
+        _otorgarWildcardAleatoria();
       }
       final hayMasEncuentros = _indiceActual + 1 < _encuentros.length;
       if (hayMasEncuentros) {
@@ -291,6 +330,12 @@ class CombateController extends ChangeNotifier {
     }
 
     notifyListeners();
+
+    // Resetear wildcards
+    _golpeDobleActivo = false;
+    _roboDeVidaActivo = false;
+    _pistaActiva = null;
+    _opcionesOcultas.clear();
 
     // Pausa dramática para que el jugador vea el resultado del turno
     if (duracionPausaTurno > Duration.zero) {
@@ -381,5 +426,61 @@ class CombateController extends ChangeNotifier {
     await _finalizarUseCase.ejecutar(partida: _partida, gano: gano);
     guardandoResultado = false;
     notifyListeners();
+  }
+
+  Future<void> usarWildcard(TipoWildcard tipo) async {
+    if (combateTerminado || turnoEnProceso || enPausa) return;
+    final cantidad = _wildcards[tipo] ?? 0;
+    if (cantidad <= 0) return;
+
+    switch (tipo) {
+      case TipoWildcard.cincuentaCincuenta:
+        _aplicarCincuentaCincuenta();
+        break;
+      case TipoWildcard.roboDeVida:
+        _roboDeVidaActivo = true;
+        break;
+      case TipoWildcard.golpeDoble:
+        _golpeDobleActivo = true;
+        break;
+      case TipoWildcard.pista:
+        _pistaActiva = _generarPistaLocal();
+        break;
+    }
+
+    _wildcards[tipo] = cantidad - 1;
+    notifyListeners();
+  }
+
+  void _aplicarCincuentaCincuenta() {
+    final pregunta = _preguntaActiva ?? _encuentros[_indiceActual];
+    final incorrectas = pregunta.opciones.where((o) => o.calidad < 2).toList();
+    incorrectas.shuffle();
+    final aOcultar = incorrectas.take(2);
+    _opcionesOcultas.clear();
+    for (final op in aOcultar) {
+      _opcionesOcultas.add(op.texto);
+    }
+  }
+
+  String _generarPistaLocal() {
+    final pregunta = _preguntaActiva ?? _encuentros[_indiceActual];
+    return 'La respuesta correcta tiene aproximadamente ${_longitudRespuesta(pregunta)} caracteres.';
+  }
+
+  int _longitudRespuesta(Encuentro pregunta) {
+    final correcta = pregunta.opciones.firstWhere((o) => o.calidad == 2);
+    return correcta.texto.length;
+  }
+
+  void _otorgarWildcardAleatoria() {
+    final tipos = TipoWildcard.values.toList()..shuffle();
+    for (final tipo in tipos) {
+      final actual = _wildcards[tipo] ?? 0;
+      if (actual < 3) {
+        _wildcards[tipo] = actual + 1;
+        break;
+      }
+    }
   }
 }
