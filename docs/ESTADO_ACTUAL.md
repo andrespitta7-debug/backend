@@ -207,3 +207,6 @@ y el docente: `feature/SYSQ-XX` → `dev` → `preprod` → `main`. |
 | 2026-10-01 | Menu principal rediseñado en grid 2x2 con tarjetas centradas y estilo tablero de aventuras. | Bloque C |
 | 2026-10-01 | Prompt universal del narrador: la IA ya no está limitada a contenido de Ingenieria de Sistemas, ahora genera para cualquier tema. | Bloque A |
 | 2026-10-01 | Consola narrativa scrollable estilo Dwarf Fortress en CombateScreen. El historial de eventos se acumula y el jugador puede deslizar para revisarlo. | Bloque B |
+| 2026-10-01 | Coherencia tematica reforzada en prompts: la IA ahora respeta estrictamente el tema indicado. | Bloque 1 |
+| 2026-10-01 | Bug de vida del enemigo resuelto (context.watch). Consola narrativa invertida (ultimo evento arriba) y plegable con AnimatedContainer. | Bloque 2 |
+| 2026-10-01 | Animacion de ataque/contraataque con emojis temporales (jugador avanza al acertar, enemigo avanza al fallar). | Bloque 3 |
