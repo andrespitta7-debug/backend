@@ -51,6 +51,7 @@ class _CombateScreenState extends State<CombateScreen>
   late final AnimationController _temblorEnemigo;
   late final AnimationController _sacudidaPantalla;
   late final AnimationController _destelloCritico;
+  double _sacudidaAmplitud = 8.0;
 
   @override
   void initState() {
@@ -92,15 +93,22 @@ class _CombateScreenState extends State<CombateScreen>
     _resultadoMostrado = resultado;
 
     if (resultado.danoAlEnemigo > 0) {
-      _mostrarDanioEnemigo(resultado.danoAlEnemigo);
-      _temblorEnemigo.forward(from: 0);
-      if (resultado.resultado == ResultadoTurno.critico) {
-        _destelloCritico.forward(from: 0);
-      }
+      _sacudidaAmplitud = 4.0;
+      _sacudidaPantalla.forward(from: 0);
+
+      Future.delayed(const Duration(milliseconds: 80), () {
+        if (!mounted) return;
+        _mostrarDanioEnemigo(resultado.danoAlEnemigo);
+        _temblorEnemigo.forward(from: 0);
+        if (resultado.resultado == ResultadoTurno.critico) {
+          _destelloCritico.forward(from: 0);
+        }
+      });
     }
     if (resultado.danoAlJugador > 0) {
-      _mostrarDanioJugador(resultado.danoAlJugador);
+      _sacudidaAmplitud = 8.0;
       _sacudidaPantalla.forward(from: 0);
+      _mostrarDanioJugador(resultado.danoAlJugador);
     }
   }
 
@@ -219,7 +227,7 @@ class _CombateScreenState extends State<CombateScreen>
             animation: _sacudidaPantalla,
             builder: (context, child) {
               final desplazamiento =
-                  math.sin(_sacudidaPantalla.value * math.pi * 12) * 8;
+                  math.sin(_sacudidaPantalla.value * math.pi * 12) * _sacudidaAmplitud;
               return Transform.translate(
                 offset: Offset(desplazamiento, 0),
                 child: child,
@@ -544,7 +552,7 @@ class _CombateContenido extends StatelessWidget {
   }
 }
 
-class _EnemigoCard extends StatelessWidget {
+class _EnemigoCard extends StatefulWidget {
   final String? categoria;
   final String nombre;
   final int vida;
@@ -568,25 +576,77 @@ class _EnemigoCard extends StatelessWidget {
   });
 
   @override
+  State<_EnemigoCard> createState() => _EnemigoCardState();
+}
+
+class _EnemigoCardState extends State<_EnemigoCard> with TickerProviderStateMixin {
+  late final AnimationController _flashDanio;
+  late final AnimationController _particulasController;
+  int _danioKeyAnterior = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _flashDanio = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _particulasController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_EnemigoCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.danioKey != oldWidget.danioKey && widget.danio != null && widget.danio! > 0) {
+      if (widget.danioKey != _danioKeyAnterior) {
+        _danioKeyAnterior = widget.danioKey;
+        _flashDanio.forward(from: 0.0).then((_) => _flashDanio.reverse());
+        _particulasController.forward(from: 0.0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _flashDanio.dispose();
+    _particulasController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final borde = esJefe ? AppTheme.doradoCritico : AppTheme.superficieElevada;
+    final borde = widget.esJefe ? AppTheme.doradoCritico : AppTheme.superficieElevada;
     return AnimatedBuilder(
-      animation: Listenable.merge([temblor, destello]),
+      animation: Listenable.merge([widget.temblor, widget.destello, _flashDanio, _particulasController]),
       builder: (context, child) {
-        final desplazamiento = math.sin(temblor.value * math.pi * 12) * 5;
-        final brillo = destello.value;
+        final desplazamiento = math.sin(widget.temblor.value * math.pi * 12) * 5;
+        final brillo = widget.destello.value;
+        
+        Color colorFondo = Color.lerp(
+          AppTheme.superficieNoche,
+          AppTheme.doradoCritico.withValues(alpha: 0.25),
+          brillo,
+        )!;
+
+        if (_flashDanio.value > 0) {
+          colorFondo = Color.lerp(
+            colorFondo,
+            Colors.red.withValues(alpha: 0.5),
+            _flashDanio.value,
+          )!;
+        }
+
         return Transform.translate(
           offset: Offset(desplazamiento, 0),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: Color.lerp(
-                AppTheme.superficieNoche,
-                AppTheme.doradoCritico.withValues(alpha: 0.25),
-                brillo,
-              ),
+              color: colorFondo,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: borde, width: esJefe ? 3 : 2),
-              boxShadow: esJefe
+              border: Border.all(color: borde, width: widget.esJefe ? 3 : 2),
+              boxShadow: widget.esJefe
                   ? [
                       BoxShadow(
                         color: AppTheme.doradoCritico.withValues(alpha: 0.25),
@@ -595,64 +655,90 @@ class _EnemigoCard extends StatelessWidget {
                     ]
                   : null,
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Row(
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Stack(
+                    clipBehavior: Clip.none,
                     children: [
-                      Text(
-                        _iconoCategoria(categoria),
-                        style: const TextStyle(fontSize: 48),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                      Row(
+                        children: [
+                          Text(
+                            _iconoCategoria(widget.categoria),
+                            style: const TextStyle(fontSize: 48),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  child: Text(
-                                    nombre,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleLarge,
-                                  ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        widget.nombre,
+                                        style: Theme.of(context).textTheme.titleLarge,
+                                      ),
+                                    ),
+                                    if (widget.esJefe) const _EtiquetaJefe(),
+                                  ],
                                 ),
-                                if (esJefe) const _EtiquetaJefe(),
+                                const SizedBox(height: 12),
+                                _BarraVida(
+                                  etiqueta: 'VIDA',
+                                  valor: widget.vida,
+                                  maximo: widget.vidaMaxima,
+                                  color: AppTheme.rojoDanio,
+                                ),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            _BarraVida(
-                              etiqueta: 'VIDA',
-                              valor: vida,
-                              maximo: vidaMaxima,
-                              color: AppTheme.rojoDanio,
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
+                      if (widget.danio != null)
+                        Positioned(
+                          right: 20,
+                          top: -8,
+                          child: _NumeroDanio(
+                            key: ValueKey(widget.danioKey),
+                            valor: widget.danio!,
+                            color: AppTheme.rojoDanio,
+                          ),
+                        ),
                     ],
                   ),
-                  if (danio != null)
-                    Positioned(
-                      right: 20,
-                      top: -8,
-                      child: _NumeroDanio(
-                        key: ValueKey(danioKey),
-                        valor: danio!,
-                        color: AppTheme.rojoDanio,
-                      ),
-                    ),
-                ],
-              ),
+                ),
+                if (_particulasController.isAnimating)
+                  ..._generarParticulas(),
+              ],
             ),
           ),
         );
       },
     );
+  }
+
+  List<Widget> _generarParticulas() {
+    final progreso = _particulasController.value;
+    final opacidad = 1.0 - progreso;
+    final radio = 40.0 * Curves.easeOut.transform(progreso);
+    
+    return List.generate(6, (i) {
+      final angulo = i * (math.pi * 2 / 6);
+      final dx = math.cos(angulo) * radio;
+      final dy = math.sin(angulo) * radio;
+      
+      return Positioned(
+        left: 40 + dx, // Centro aproximado del icono
+        top: 40 + dy,
+        child: Opacity(
+          opacity: opacidad,
+          child: const Text('💥', style: TextStyle(fontSize: 14)),
+        ),
+      );
+    });
   }
 }
 
@@ -713,7 +799,7 @@ class _BarraVidaJugador extends StatelessWidget {
   }
 }
 
-class _BarraVida extends StatelessWidget {
+class _BarraVida extends StatefulWidget {
   final String etiqueta;
   final int valor;
   final int maximo;
@@ -727,12 +813,45 @@ class _BarraVida extends StatelessWidget {
   });
 
   @override
+  State<_BarraVida> createState() => _BarraVidaState();
+}
+
+class _BarraVidaState extends State<_BarraVida> with SingleTickerProviderStateMixin {
+  late final AnimationController _flashController;
+  late int _valorAnterior;
+
+  @override
+  void initState() {
+    super.initState();
+    _flashController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _valorAnterior = widget.valor;
+  }
+
+  @override
+  void didUpdateWidget(_BarraVida oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.valor < _valorAnterior) {
+      _flashController.forward(from: 0.0).then((_) => _flashController.reverse());
+    }
+    _valorAnterior = widget.valor;
+  }
+
+  @override
+  void dispose() {
+    _flashController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final progreso = maximo == 0 ? 0.0 : (valor / maximo).clamp(0.0, 1.0);
+    final progreso = widget.maximo == 0 ? 0.0 : (widget.valor / widget.maximo).clamp(0.0, 1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(etiqueta, style: Theme.of(context).textTheme.labelLarge),
+        Text(widget.etiqueta, style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: 5),
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
@@ -740,12 +859,20 @@ class _BarraVida extends StatelessWidget {
             tween: Tween(end: progreso),
             duration: const Duration(milliseconds: 400),
             curve: Curves.easeOutCubic,
-            builder: (context, valorAnimado, _) => LinearProgressIndicator(
-              minHeight: 12,
-              value: valorAnimado,
-              color: color,
-              backgroundColor: AppTheme.superficieElevada,
-            ),
+            builder: (context, valorAnimado, _) {
+              return AnimatedBuilder(
+                animation: _flashController,
+                builder: (context, _) {
+                  final colorAct = Color.lerp(widget.color, Colors.white, _flashController.value)!;
+                  return LinearProgressIndicator(
+                    minHeight: 12,
+                    value: valorAnimado,
+                    color: colorAct,
+                    backgroundColor: AppTheme.superficieElevada,
+                  );
+                },
+              );
+            },
           ),
         ),
       ],
@@ -973,6 +1100,9 @@ class _NumeroDanioState extends State<_NumeroDanio> with SingleTickerProviderSta
 
   @override
   Widget build(BuildContext context) {
+    final bool esCritico = widget.valor >= 25;
+    final double fontSize = esCritico ? 32 : 24;
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) => Opacity(
@@ -982,12 +1112,29 @@ class _NumeroDanioState extends State<_NumeroDanio> with SingleTickerProviderSta
           child: child,
         ),
       ),
-      child: Text(
-        '-${widget.valor}',
-        style: const TextStyle(
-          fontFamily: 'PressStart2P',
-          fontSize: 16,
-        ).copyWith(color: widget.color),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Text(
+            '-${widget.valor}',
+            style: TextStyle(
+              fontFamily: 'PressStart2P',
+              fontSize: fontSize,
+              foreground: Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 4
+                ..color = Colors.black,
+            ),
+          ),
+          Text(
+            '-${widget.valor}',
+            style: TextStyle(
+              fontFamily: 'PressStart2P',
+              fontSize: fontSize,
+              color: widget.color,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1176,6 +1323,8 @@ class _AvatarCombate extends StatefulWidget {
 
 class _AvatarCombateState extends State<_AvatarCombate> {
   double _desplazamiento = 0;
+  double _escala = 1.0;
+  double _rotacion = 0.0;
   ResultadoCombate? _ultimoResultadoProcesado;
   Timer? _timerAnimacion;
 
@@ -1203,13 +1352,23 @@ class _AvatarCombateState extends State<_AvatarCombate> {
     _timerAnimacion?.cancel();
 
     if (esAcierto && widget.posicion == _PosicionCombate.jugador) {
-      setState(() => _desplazamiento = 50);
-      _timerAnimacion = Timer(const Duration(milliseconds: 200), () {
-        if (mounted) setState(() => _desplazamiento = 0);
+      setState(() {
+        _desplazamiento = 50;
+        _escala = 1.3;
+        _rotacion = -15 * (math.pi / 180);
+      });
+      _timerAnimacion = Timer(const Duration(milliseconds: 150), () {
+        if (mounted) {
+          setState(() {
+            _desplazamiento = 0;
+            _escala = 1.0;
+            _rotacion = 0.0;
+          });
+        }
       });
     } else if (esFallo && widget.posicion == _PosicionCombate.enemigo) {
       setState(() => _desplazamiento = -50);
-      _timerAnimacion = Timer(const Duration(milliseconds: 200), () {
+      _timerAnimacion = Timer(const Duration(milliseconds: 150), () {
         if (mounted) setState(() => _desplazamiento = 0);
       });
     }
@@ -1220,7 +1379,7 @@ class _AvatarCombateState extends State<_AvatarCombate> {
     return ClipRect(
       child: SizedBox(
         width: 120,
-        height: 60,
+        height: 80,
         child: Stack(
           clipBehavior: Clip.none,
           alignment: widget.posicion == _PosicionCombate.jugador
@@ -1228,17 +1387,26 @@ class _AvatarCombateState extends State<_AvatarCombate> {
               : Alignment.centerRight,
           children: [
             AnimatedPositioned(
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 150),
               curve: Curves.easeOut,
               left: widget.posicion == _PosicionCombate.jugador ? _desplazamiento : null,
               right: widget.posicion == _PosicionCombate.enemigo ? -_desplazamiento : null,
               top: 0,
               bottom: 0,
-              width: 60,
-              child: Center(
-                child: Text(
-                  widget.emoji,
-                  style: const TextStyle(fontSize: 48),
+              width: 80,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOut,
+                transformAlignment: Alignment.center,
+                // ignore: deprecated_member_use
+                transform: Matrix4.identity()
+                  ..rotateZ(_rotacion)
+                  ..scale(_escala),
+                child: Center(
+                  child: Text(
+                    widget.emoji,
+                    style: const TextStyle(fontSize: 48),
+                  ),
                 ),
               ),
             ),

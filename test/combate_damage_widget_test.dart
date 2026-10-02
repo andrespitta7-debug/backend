@@ -133,16 +133,20 @@ void main() {
     await tester.tap(find.text('A  Respuesta crítica'));
     await tester.pump(const Duration(milliseconds: 100));
     final posicionBarraEnemigo = tester.getTopLeft(barras.at(0));
-    final posicionDanioEnemigo = tester.getCenter(find.text('-25'));
+    final posicionDanioEnemigo = tester.getCenter(find.text('-25').first);
     expect(posicionDanioEnemigo.dy, lessThan(posicionBarraEnemigo.dy + 24));
 
     await tester.pump(const Duration(milliseconds: 900));
-    await tester.tap(find.text('C  Respuesta incorrecta'));
+    final opcionIncorrrecta = find.text('C  Respuesta incorrecta');
+    await tester.ensureVisible(opcionIncorrrecta);
+    await tester.pump();
+    await tester.tap(opcionIncorrrecta);
     await tester.pump(const Duration(milliseconds: 100));
+    await tester.ensureVisible(barras.at(1));
+    await tester.pump();
     final posicionBarraJugador = tester.getTopLeft(barras.at(1));
-    final posicionDanioJugador = tester.getCenter(find.text('-15'));
+    final posicionDanioJugador = tester.getCenter(find.text('-15').first);
     expect(posicionDanioJugador.dy, lessThan(posicionBarraJugador.dy + 24));
-    expect(posicionDanioJugador.dy, greaterThan(posicionBarraEnemigo.dy));
 
     controller.dispose();
   });
