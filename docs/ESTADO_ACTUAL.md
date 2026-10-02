@@ -205,3 +205,5 @@ y el docente: `feature/SYSQ-XX` → `dev` → `preprod` → `main`. |
 | 01-oct.-2026 | Run Infinita completada (Frontend + Backend). Edge Function generar-encuentros-extra corregida y desplegada. | Mejora de gameplay (Run Infinita) |
 | 2026-10-01 | Run Infinita completada end-to-end. Frontend conectado a `generar-quest-completa` (pool narrativo + 9 preguntas extra + semilla). `CombateController` ahora guarda tema/categoría/dificultad de la quest y los pasa correctamente a `generar-encuentros-extra`. 117 tests pasan. | Cierre del bloque Run Infinita |
 | 2026-10-01 | Menu principal rediseñado en grid 2x2 con tarjetas centradas y estilo tablero de aventuras. | Bloque C |
+| 2026-10-01 | Prompt universal del narrador: la IA ya no está limitada a contenido de Ingenieria de Sistemas, ahora genera para cualquier tema. | Bloque A |
+| 2026-10-01 | Consola narrativa scrollable estilo Dwarf Fortress en CombateScreen. El historial de eventos se acumula y el jugador puede deslizar para revisarlo. | Bloque B |
