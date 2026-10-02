@@ -397,6 +397,53 @@ class _CombateContenido extends StatelessWidget {
               ),
             if (controller.mensajeUltimoTurno != null)
               _MensajeTurno(texto: controller.mensajeUltimoTurno!),
+
+            // Consola narrativa (estilo Dwarf Fortress)
+            const SizedBox(height: 16),
+            Container(
+              height: 180,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.superficieNoche,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppTheme.superficieElevada,
+                  width: 2,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '> HISTORIAL DE LA RUN',
+                    style: TextStyle(
+                      fontFamily: 'PressStart2P',
+                      fontSize: 10,
+                      color: AppTheme.azulTexto,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: controller.historialNarrativo.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(
+                            '> ${controller.historialNarrativo[index]}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.azulTexto.withValues(alpha: 0.85),
+                              height: 1.4,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ],
       ),
@@ -900,7 +947,23 @@ class _PanelNarrativo extends StatelessWidget {
       child: Column(
         children: [
           const Icon(Icons.auto_awesome, color: AppTheme.azulTexto, size: 48),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppTheme.azulTexto,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Text(
+              'NUEVO',
+              style: TextStyle(
+                fontFamily: 'PressStart2P',
+                fontSize: 8,
+                color: AppTheme.fondoNoche,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           Text(
             texto,
             style: const TextStyle(

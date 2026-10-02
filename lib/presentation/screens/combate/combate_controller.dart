@@ -45,6 +45,8 @@ class CombateController extends ChangeNotifier {
   int vidaEnemigo = 30;
   String? mensajeUltimoTurno;
   String? mensajeNarrativoActual;
+  final List<String> _historialNarrativo = [];
+  List<String> get historialNarrativo => List.unmodifiable(_historialNarrativo);
   ResultadoCombate? resultadoUltimoTurno;
   bool cargando = true;
   bool encuentroSuperado = false; // se venció al enemigo actual, pero faltan más
@@ -144,6 +146,13 @@ class CombateController extends ChangeNotifier {
     return null;
   }
 
+  void _setMensajeNarrativo(String? mensaje) {
+    mensajeNarrativoActual = mensaje;
+    if (mensaje != null) {
+      _historialNarrativo.add(mensaje);
+    }
+  }
+
   Future<void> cargarQuest(
     String idQuest,
     String idUsuario, {
@@ -206,7 +215,7 @@ class CombateController extends ChangeNotifier {
       idQuest: idQuest,
     );
 
-    mensajeNarrativoActual = _consumirFragmentoNarrativo('intro');
+    _setMensajeNarrativo(_consumirFragmentoNarrativo('intro'));
     cargando = false;
     notifyListeners();
   }
@@ -248,7 +257,7 @@ class CombateController extends ChangeNotifier {
     if (vidaJugador <= 0) {
       combateTerminado = true;
       jugadorGano = false;
-      mensajeNarrativoActual = _consumirFragmentoNarrativo('muerte');
+      _setMensajeNarrativo(_consumirFragmentoNarrativo('muerte'));
       _finalizarPartida(gano: false);
     } else if (vidaEnemigo <= 0) {
       final hayMasEncuentros = _indiceActual + 1 < _encuentros.length;
@@ -258,7 +267,7 @@ class CombateController extends ChangeNotifier {
       } else {
         combateTerminado = true;
         jugadorGano = true;
-        mensajeNarrativoActual = _consumirFragmentoNarrativo('ronda_completada');
+        _setMensajeNarrativo(_consumirFragmentoNarrativo('ronda_completada'));
         _finalizarPartida(gano: true);
       }
     }
@@ -297,10 +306,10 @@ class CombateController extends ChangeNotifier {
     mensajeUltimoTurno = null;
 
     final proximoEsJefe = nuevoEnemigo.esJefe;
-    mensajeNarrativoActual = proximoEsJefe
+    _setMensajeNarrativo(proximoEsJefe
         ? (_consumirFragmentoNarrativo('jefe_avistado') ??
             _consumirFragmentoNarrativo('entre_combates'))
-        : _consumirFragmentoNarrativo('entre_combates');
+        : _consumirFragmentoNarrativo('entre_combates'));
 
     // Solicitar más preguntas en background si quedan 3 o menos
     if (_preguntasExtra.length <= 3 && !_generandoExtra) {
@@ -342,7 +351,7 @@ class CombateController extends ChangeNotifier {
     enPausa = false;
     combateTerminado = true;
     jugadorGano = false;
-    mensajeNarrativoActual = _consumirFragmentoNarrativo('retirada') ?? 'Te has retirado del combate.';
+    _setMensajeNarrativo(_consumirFragmentoNarrativo('retirada') ?? 'Te has retirado del combate.');
     await _finalizarPartida(gano: false);
   }
 
