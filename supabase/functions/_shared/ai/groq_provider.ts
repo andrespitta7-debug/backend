@@ -21,17 +21,17 @@ export class GroqProvider implements AiProvider {
     const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
 
     const requestBody = {
-      model: 'openai/gpt-oss-120b',
+      model: 'qwen/qwen3.8-27b',
       messages: [
         { role: 'system', content: params.systemInstruction },
         { role: 'user', content: params.userPrompt },
       ],
       response_format: { type: 'json_object' },
       temperature: 0.7,
-      max_tokens: 6000,
+      max_tokens: 8000,
     };
 
-    const timeoutMs = params.timeoutMs ?? 10000;
+    const timeoutMs = params.timeoutMs ?? 60000;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
