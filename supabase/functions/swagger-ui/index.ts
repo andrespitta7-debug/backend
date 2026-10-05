@@ -21,16 +21,23 @@ Deno.serve(async (req: Request) => {
 <body>
   <div id="swagger-ui"></div>
   <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js" crossorigin></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js" crossorigin></script>
   <script>
     window.onload = () => {
       window.ui = SwaggerUIBundle({
-        url: '${supabaseUrl}/rest/v1/?apikey=${supabaseAnonKey}',
+        url: '/rest/v1/',
         dom_id: '#swagger-ui',
         deepLinking: true,
         presets: [
           SwaggerUIBundle.presets.apis,
-          SwaggerUIBundle.SwaggerUIStandalonePreset
+          SwaggerUIStandalonePreset
         ],
+        layout: "StandaloneLayout",
+        requestInterceptor: (req) => {
+          req.headers['apikey'] = '${supabaseAnonKey}';
+          req.headers['Authorization'] = 'Bearer ${supabaseAnonKey}';
+          return req;
+        }
       });
     };
   </script>
