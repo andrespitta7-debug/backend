@@ -295,14 +295,12 @@ class CombateController extends ChangeNotifier {
         break;
       case ResultadoTurno.fallo:
         mensajeUltimoTurno = 'Incorrecto. El enemigo contraataca: -${resultado.danoAlJugador} HP';
-        // Si el jugador falla y el enemigo ataca, el siguiente turno carga una nueva pregunta
-        if (_preguntasExtra.isNotEmpty) {
-          _preguntaActiva = _preguntasExtra.removeAt(0);
-          if (_preguntasExtra.length <= 3 && !_generandoExtra) {
-            _solicitarMasEncuentros();
-          }
-        }
         break;
+    }
+
+    // Si el enemigo sigue vivo y el jugador también, toca nueva pregunta.
+    if (vidaEnemigo > 0 && vidaJugador > 0) {
+      _avanzarPregunta();
     }
 
     if (vidaJugador <= 0) {
@@ -356,6 +354,26 @@ class CombateController extends ChangeNotifier {
         turnoEnProceso = false;
         notifyListeners();
       }
+    }
+  }
+
+  /// Cambia la pregunta activa a la siguiente del pool.
+  /// Si el pool se está agotando, solicita más al backend.
+  void _avanzarPregunta() {
+    if (_preguntasExtra.isEmpty) {
+      // No hay preguntas disponibles todavía. Solicitar más y dejar
+      // la pregunta actual como fallback hasta que lleguen.
+      if (!_generandoExtra) {
+        _solicitarMasEncuentros();
+      }
+      return;
+    }
+
+    _preguntaActiva = _preguntasExtra.removeAt(0);
+
+    // Si quedan pocas, pedir más en background para no bloquear.
+    if (_preguntasExtra.length <= 3 && !_generandoExtra) {
+      _solicitarMasEncuentros();
     }
   }
 
