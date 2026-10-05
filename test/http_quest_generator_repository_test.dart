@@ -292,7 +292,7 @@ void main() {
               .having(
                 (e) => e.mensaje,
                 'mensaje',
-                contains('Tu sesión expiró, vuelve a iniciar sesión.'),
+                contains('Tu sesión expiró. Vuelve a iniciar sesión.'),
               )
               .having((e) => e.statusCode, 'statusCode', equals(401)),
         ),
@@ -321,7 +321,7 @@ void main() {
               .having(
                 (e) => e.mensaje,
                 'mensaje',
-                contains('Tu sesión expiró, vuelve a iniciar sesión.'),
+                contains('Tu sesión expiró. Vuelve a iniciar sesión.'),
               )
               .having((e) => e.statusCode, 'statusCode', equals(401)),
         ),
@@ -356,9 +356,11 @@ void main() {
               .having(
                 (e) => e.mensaje,
                 'mensaje',
-                contains('El servicio de generación no está disponible'),
+                contains(
+                    'El servicio de IA no está disponible en este momento. Espera un minuto y vuelve a intentar.'),
               )
-              .having((e) => e.statusCode, 'statusCode', equals(502)),
+              .having((e) => e.statusCode, 'statusCode', equals(502))
+              .having((e) => e.codigo, 'codigo', equals('IA_NO_DISPONIBLE')),
         ),
       );
     });
@@ -381,7 +383,8 @@ void main() {
           isA<ApiException>().having(
             (e) => e.mensaje,
             'mensaje',
-            contains('No se pudo conectar al servidor, revisa tu conexión.'),
+            contains(
+                'No se pudo conectar con el servidor. Revisa tu conexión e intenta de nuevo.'),
           ),
         ),
       );
@@ -446,9 +449,79 @@ void main() {
               .having(
                 (e) => e.mensaje,
                 'mensaje',
-                contains('La generación tardó demasiado, intenta de nuevo.'),
+                contains(
+                    'La IA tardó demasiado en responder. Intenta de nuevo o prueba con un tema más específico.'),
               )
-              .having((e) => e.statusCode, 'statusCode', equals(504)),
+              .having((e) => e.statusCode, 'statusCode', equals(504))
+              .having((e) => e.codigo, 'codigo', equals('IA_TIMEOUT')),
+        ),
+      );
+    });
+
+    test('generarQuest con 500 y ERROR_PERSISTENCIA lanza mensaje mapeado',
+        () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'ok': false,
+            'codigo': 'ERROR_PERSISTENCIA',
+            'detalle': 'DB error',
+          }),
+          500,
+        );
+      });
+
+      final repo = HttpQuestGeneratorRepository(
+        baseUrl: baseUrl,
+        anonKey: anonKey,
+        tokenRepository: fakeTokenRepo,
+        httpClient: mockClient,
+      );
+
+      expect(
+        () => repo.generarQuest('recursión'),
+        throwsA(
+          isA<ApiException>()
+              .having(
+                (e) => e.mensaje,
+                'mensaje',
+                contains('Hubo un problema al guardar la quest. Intenta de nuevo.'),
+              )
+              .having((e) => e.codigo, 'codigo', equals('ERROR_PERSISTENCIA')),
+        ),
+      );
+    });
+
+    test('generarQuest con 502 e IA_JSON_INVALIDO lanza mensaje mapeado',
+        () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'ok': false,
+            'codigo': 'IA_JSON_INVALIDO',
+          }),
+          502,
+        );
+      });
+
+      final repo = HttpQuestGeneratorRepository(
+        baseUrl: baseUrl,
+        anonKey: anonKey,
+        tokenRepository: fakeTokenRepo,
+        httpClient: mockClient,
+      );
+
+      expect(
+        () => repo.generarQuest('recursión'),
+        throwsA(
+          isA<ApiException>()
+              .having(
+                (e) => e.mensaje,
+                'mensaje',
+                contains(
+                    'La IA generó una respuesta con formato inválido. Intenta de nuevo.'),
+              )
+              .having((e) => e.codigo, 'codigo', equals('IA_JSON_INVALIDO')),
         ),
       );
     });

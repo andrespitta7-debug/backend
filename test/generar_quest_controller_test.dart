@@ -7,6 +7,7 @@ import 'package:sysquest_app/domain/repositories/quest_generator_repository.dart
 import 'package:sysquest_app/domain/repositories/quest_repository.dart';
 import 'package:sysquest_app/domain/usecases/generar_quest_usecase.dart';
 import 'package:sysquest_app/presentation/screens/generar_quest/generar_quest_controller.dart';
+import 'package:sysquest_app/infrastructure/api/api_exception.dart';
 
 class FakeQuestGeneratorRepository implements QuestGeneratorRepository {
   FakeQuestGeneratorRepository(this.questCompleta);
@@ -154,5 +155,77 @@ void main() {
       expect(repo.questGuardada, isNull);
       controller.dispose();
     });
+
+    test('captura ApiException temporal (IA_TIMEOUT) y marca esErrorReintentable como true', () async {
+      final repo = FakeQuestRepository();
+      final controller = GenerarQuestController(
+        GenerarQuestUseCase(
+          _ThrowingQuestGeneratorRepository(
+            const ApiException(
+              'La IA tardó demasiado en responder. Intenta de nuevo o prueba con un tema más específico.',
+              statusCode: 504,
+              codigo: 'IA_TIMEOUT',
+            ),
+          ),
+          repo,
+        ),
+      );
+
+      await controller.generar('tema válido');
+
+      expect(controller.estado, GenerarQuestEstado.error);
+      expect(
+        controller.mensajeError,
+        'La IA tardó demasiado en responder. Intenta de nuevo o prueba con un tema más específico.',
+      );
+      expect(controller.codigoError, 'IA_TIMEOUT');
+      expect(controller.esErrorReintentable, isTrue);
+      controller.dispose();
+    });
+
+    test('captura ApiException no reintentable (IA_JSON_INVALIDO) y marca esErrorReintentable como false', () async {
+      final repo = FakeQuestRepository();
+      final controller = GenerarQuestController(
+        GenerarQuestUseCase(
+          _ThrowingQuestGeneratorRepository(
+            const ApiException(
+              'La IA generó una respuesta con formato inválido. Intenta de nuevo.',
+              statusCode: 502,
+              codigo: 'IA_JSON_INVALIDO',
+            ),
+          ),
+          repo,
+        ),
+      );
+
+      await controller.generar('tema válido');
+
+      expect(controller.estado, GenerarQuestEstado.error);
+      expect(
+        controller.mensajeError,
+        'La IA generó una respuesta con formato inválido. Intenta de nuevo.',
+      );
+      expect(controller.codigoError, 'IA_JSON_INVALIDO');
+      expect(controller.esErrorReintentable, isFalse);
+      controller.dispose();
+    });
   });
+}
+
+class _ThrowingQuestGeneratorRepository implements QuestGeneratorRepository {
+  final Object error;
+
+  _ThrowingQuestGeneratorRepository(this.error);
+
+  @override
+  Future<QuestCompleta> generarQuest(String tema) async => throw error;
+
+  @override
+  Future<List<Encuentro>> generarEncuentrosExtra({
+    required String idQuest,
+    required String tema,
+    required String categoria,
+    required String dificultad,
+    required int ultimoNumero,
+  }) async => throw error;
 }

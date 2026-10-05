@@ -32,8 +32,12 @@ class FakeQuestRepository implements QuestRepository {
 }
 
 class FakePartidaRepository implements PartidaRepository {
+  Partida? ultimaPartidaGuardada;
+
   @override
-  Future<void> guardarPartida(Partida partida) async {}
+  Future<void> guardarPartida(Partida partida) async {
+    ultimaPartidaGuardada = partida;
+  }
 
   @override
   Future<ProgresoUsuario?> obtenerProgreso(String idUsuario) async => null;
@@ -475,6 +479,41 @@ void main() {
       // Check wildcards
       final totalDespues = TipoWildcard.values.map((t) => controller.wildcards[t]!).reduce((a, b) => a + b);
       expect(totalDespues, equals(1)); // Se otorgó 1
+    });
+
+    test('al finalizar partida calcula XP proporcional al score (min 10, max 1000)', () async {
+      final repoQuest = FakeQuestRepository([encuentroNormal1]);
+      final repoPartida = FakePartidaRepository();
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(repoPartida),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
+        duracionPausaTurno: Duration.zero,
+      );
+      await controller.cargarQuest('q-1', 'u-1');
+
+      // Caso 1: Retirarse sin score da mínimo 10 XP
+      await controller.retirarse();
+      expect(controller.partida.xpObtenida, equals(10));
+      expect(repoPartida.ultimaPartidaGuardada!.xpObtenida, equals(10));
+
+      // Caso 2: Con score acumulado tras acertar
+      final controller2 = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(repoPartida),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
+        duracionPausaTurno: Duration.zero,
+      );
+      await controller2.cargarQuest('q-1', 'u-1');
+      // Acierto crítico suma 125 score
+      await controller2.elegirOpcion(opcionCritica);
+      // Retirarse con score 125: (125 / 10).round() = 13
+      await controller2.retirarse();
+      expect(controller2.partida.score, equals(125));
+      expect(controller2.partida.xpObtenida, equals(13));
+      expect(repoPartida.ultimaPartidaGuardada!.xpObtenida, equals(13));
     });
   });
 }

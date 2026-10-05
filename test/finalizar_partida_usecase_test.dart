@@ -99,5 +99,29 @@ void main() {
       expect(repo.progreso!.xpTotal, equals(130));
       expect(repo.progreso!.nivel, equals(2));
     });
+
+    test('respeta xpObtenida proporcional pre-calculada en la partida', () async {
+      final progresoInicial = ProgresoUsuario(
+        idUsuario: 'usuario-4',
+        nivel: 1,
+        xpTotal: 50,
+      );
+      final repo = FakePartidaRepository(progreso: progresoInicial);
+      final useCase = FinalizarPartidaUseCase(repo, guardarLocalmente: true);
+
+      final partida = Partida(
+        idPartida: 'partida-4',
+        idUsuario: 'usuario-4',
+        idQuest: 'quest-001',
+        score: 2500,
+        xpObtenida: 250,
+      );
+
+      await useCase.ejecutar(partida: partida, gano: true);
+
+      expect(partida.xpObtenida, equals(250));
+      expect(repo.progreso!.xpTotal, equals(300)); // 50 + 250 = 300
+      expect(repo.progreso!.nivel, equals(4)); // 1 + (300 ~/ 100) = 4
+    });
   });
 }
