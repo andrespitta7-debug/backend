@@ -150,4 +150,47 @@ void main() {
 
     controller.dispose();
   });
+
+  testWidgets('la barra de vida del enemigo se actualiza y baja visiblemente al recibir daño', (
+    tester,
+  ) async {
+    final controller = CombateController(
+      FakeQuestRepository(),
+      ResponderEncuentroUseCase(),
+      FinalizarPartidaUseCase(FakePartidaRepository()),
+      GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
+      duracionPausaTurno: Duration.zero,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: ChangeNotifierProvider.value(
+          value: controller,
+          child: const CombateScreen(
+            idQuest: 'quest-test',
+            idUsuario: 'usuario-test',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final barraEnemigoInicial = tester.widget<LinearProgressIndicator>(
+      find.byType(LinearProgressIndicator).first,
+    );
+    expect(barraEnemigoInicial.value, equals(1.0));
+
+    await tester.tap(find.text('A  Respuesta crítica'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final barraEnemigoDanada = tester.widget<LinearProgressIndicator>(
+      find.byType(LinearProgressIndicator).first,
+    );
+    expect(barraEnemigoDanada.value, equals(0.75));
+
+    controller.dispose();
+  });
 }

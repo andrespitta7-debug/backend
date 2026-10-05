@@ -423,6 +423,9 @@ class CombateController extends ChangeNotifier {
     notifyListeners();
     _partida.encuentroActual = _indiceActual;
     _partida.score = _score;
+    // XP proporcional: 1 XP por cada 10 puntos de score, mínimo 10.
+    // Así una run larga con score 5000 otorga 500 XP.
+    _partida.xpObtenida = (_score / 10).round().clamp(10, 1000);
     await _finalizarUseCase.ejecutar(partida: _partida, gano: gano);
     guardandoResultado = false;
     notifyListeners();

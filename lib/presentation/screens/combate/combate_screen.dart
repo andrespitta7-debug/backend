@@ -428,7 +428,7 @@ class _CombateContenido extends StatelessWidget {
           _EnemigoCard(
             categoria: categoria,
             nombre: 'Encuentro ${encuentro.numero}',
-            vida: context.watch<CombateController>().vidaEnemigo,
+            vida: controller.vidaEnemigo,
             vidaMaxima: encuentro.vidaEnemigo,
             esJefe: encuentro.esJefe,
             temblor: temblorEnemigo,
@@ -448,6 +448,7 @@ class _CombateContenido extends StatelessWidget {
             _FinCombate(
               gano: controller.jugadorGano,
               guardando: controller.guardandoResultado,
+              xpObtenida: controller.partida.xpObtenida,
               onVolverAJugar: onVolverAJugar,
               onVerProgreso: onVerProgreso,
             )
@@ -600,6 +601,9 @@ class _EnemigoCardState extends State<_EnemigoCard> with TickerProviderStateMixi
   @override
   void didUpdateWidget(_EnemigoCard oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.vida != oldWidget.vida) {
+      setState(() {});
+    }
     if (widget.danioKey != oldWidget.danioKey && widget.danio != null && widget.danio! > 0) {
       if (widget.danioKey != _danioKeyAnterior) {
         _danioKeyAnterior = widget.danioKey;
@@ -833,6 +837,9 @@ class _BarraVidaState extends State<_BarraVida> with SingleTickerProviderStateMi
   @override
   void didUpdateWidget(_BarraVida oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.valor != oldWidget.valor || widget.maximo != oldWidget.maximo) {
+      setState(() {});
+    }
     if (widget.valor < _valorAnterior) {
       _flashController.forward(from: 0.0).then((_) => _flashController.reverse());
     }
@@ -982,21 +989,24 @@ class _RondaSuperada extends StatelessWidget {
 class _FinCombate extends StatelessWidget {
   final bool gano;
   final bool guardando;
+  final int? xpObtenida;
   final VoidCallback onVolverAJugar;
   final VoidCallback onVerProgreso;
 
   const _FinCombate({
     required this.gano,
     required this.guardando,
+    this.xpObtenida,
     required this.onVolverAJugar,
     required this.onVerProgreso,
   });
 
   @override
   Widget build(BuildContext context) {
-    final xp = gano
-        ? FinalizarPartidaUseCase.xpPorVictoria
-        : FinalizarPartidaUseCase.xpPorDerrota;
+    final xp = xpObtenida ??
+        (gano
+            ? FinalizarPartidaUseCase.xpPorVictoria
+            : FinalizarPartidaUseCase.xpPorDerrota);
     return Column(
       children: [
         Icon(
@@ -1398,9 +1408,9 @@ class _AvatarCombateState extends State<_AvatarCombate> {
                 duration: const Duration(milliseconds: 150),
                 curve: Curves.easeOut,
                 transformAlignment: Alignment.center,
-                // ignore: deprecated_member_use
                 transform: Matrix4.identity()
                   ..rotateZ(_rotacion)
+                  // ignore: deprecated_member_use
                   ..scale(_escala),
                 child: Center(
                   child: Text(

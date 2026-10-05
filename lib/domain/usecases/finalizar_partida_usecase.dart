@@ -21,7 +21,9 @@ class FinalizarPartidaUseCase {
     required bool gano,
   }) async {
     partida.estado = gano ? 'ganada' : 'perdida';
-    partida.xpObtenida = gano ? xpPorVictoria : xpPorDerrota;
+    if (partida.xpObtenida <= 0) {
+      partida.xpObtenida = gano ? xpPorVictoria : xpPorDerrota;
+    }
 
     // SIEMPRE llamar al repo. En modo local guarda en SQLite. En modo
     // remoto llama al Edge Function finalizar-partida (que además

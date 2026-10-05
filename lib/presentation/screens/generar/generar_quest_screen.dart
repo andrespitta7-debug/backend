@@ -52,6 +52,21 @@ class _GenerarQuestScreenState extends State<GenerarQuestScreen> {
           ),
         ),
       );
+    } else if (controller.estado == GenerarQuestEstado.error &&
+        controller.mensajeError != null) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(controller.mensajeError!),
+          duration: const Duration(seconds: 5),
+          action: controller.esErrorReintentable
+              ? SnackBarAction(
+                  label: 'Reintentar',
+                  onPressed: () => _generarQuest(),
+                )
+              : null,
+        ),
+      );
     }
   }
 
@@ -78,6 +93,7 @@ class _GenerarQuestScreenState extends State<GenerarQuestScreen> {
                     labelText: 'Tema de la quest',
                     hintText: 'Ejemplo: recursividad en programación',
                     errorText: error,
+                    errorMaxLines: 3,
                   ),
                   textInputAction: TextInputAction.done,
                   onSubmitted: generando ? null : (_) => _generarQuest(),

@@ -34,8 +34,9 @@ class HttpQuestGeneratorRepository implements QuestGeneratorRepository {
     final accessToken = await _tokenRepository.obtenerAccessToken();
     if (accessToken == null) {
       throw const ApiException(
-        'Tu sesión expiró, vuelve a iniciar sesión.',
+        'Tu sesión expiró. Vuelve a iniciar sesión.',
         statusCode: 401,
+        codigo: 'NO_AUTORIZADO',
       );
     }
 
@@ -65,7 +66,7 @@ class HttpQuestGeneratorRepository implements QuestGeneratorRepository {
       );
     } catch (_) {
       throw const ApiException(
-        'No se pudo conectar al servidor, revisa tu conexión.',
+        'No se pudo conectar con el servidor. Revisa tu conexión e intenta de nuevo.',
       );
     }
 
@@ -123,79 +124,30 @@ class HttpQuestGeneratorRepository implements QuestGeneratorRepository {
       }
     }
 
-    // 2. Sesión expirada: 401
-    if (statusCode == 401) {
-      throw const ApiException(
-        'Tu sesión expiró, vuelve a iniciar sesión.',
-        statusCode: 401,
-      );
-    }
+    // Manejo de errores específicos según código y statusCode
+    String? codigo;
+    String? detalle;
+    try {
+      final Map<String, dynamic> data =
+          jsonDecode(response.body) as Map<String, dynamic>;
+      codigo = data['codigo'] as String?;
+      if (data['detalle'] is String) {
+        detalle = data['detalle'] as String;
+      } else if (data['error'] is String) {
+        detalle = data['error'] as String;
+      }
+    } catch (_) {}
 
-    // 3. Error en datos de entrada: 400
-    if (statusCode == 400) {
-      String mensaje = 'Datos de solicitud inválidos.';
-      try {
-        final Map<String, dynamic> data =
-            jsonDecode(response.body) as Map<String, dynamic>;
-        if (data['detalle'] is String) {
-          mensaje = data['detalle'] as String;
-        } else if (data['error'] is String) {
-          mensaje = data['error'] as String;
-        }
-      } catch (_) {}
-      throw ApiException(mensaje, statusCode: 400);
-    }
-
-    // 4. Errores de IA / Gateway: 502 o 504
-    if (statusCode == 502 || statusCode == 504) {
-      String mensaje = 'No se pudo generar la quest.';
-      try {
-        final Map<String, dynamic> data =
-            jsonDecode(response.body) as Map<String, dynamic>;
-        final codigo = data['codigo'] as String?;
-        switch (codigo) {
-          case 'IA_TIMEOUT':
-            mensaje = 'La generación tardó demasiado, intenta de nuevo.';
-            break;
-          case 'IA_NO_DISPONIBLE':
-            mensaje =
-                'El servicio de generación no está disponible, intenta más tarde.';
-            break;
-          case 'IA_JSON_INVALIDO':
-            mensaje = 'La IA devolvió un formato inválido, intenta de nuevo.';
-            break;
-          case 'IA_POOL_INVALIDO':
-            mensaje = 'La narrativa generada no es válida, intenta de nuevo.';
-            break;
-          case 'IA_PREGUNTAS_INVALIDAS':
-            mensaje = 'Las preguntas generadas no son válidas, intenta de nuevo.';
-            break;
-          case 'IA_OPCIONES_DESBALANCEADAS':
-            mensaje = 'Las opciones generadas están desbalanceadas, intenta de nuevo.';
-            break;
-          case 'IA_ENCUENTROS_INVALIDOS':
-            mensaje = 'Los encuentros generados no son válidos, intenta de nuevo.';
-            break;
-          default:
-            mensaje = 'No se pudo generar la quest.';
-            break;
-        }
-      } catch (_) {}
-      throw ApiException(mensaje, statusCode: statusCode);
-    }
-
-    // 5. Error interno del servidor: 500
-    if (statusCode == 500) {
-      throw const ApiException(
-        'Error del servidor, intenta de nuevo.',
-        statusCode: 500,
-      );
-    }
-
-    // 6. Otros códigos no esperados
-    throw ApiException(
-      'Error inesperado del servidor.',
+    final mensaje = _mapearError(
       statusCode: statusCode,
+      codigo: codigo,
+      detalle: detalle,
+    );
+
+    throw ApiException(
+      mensaje,
+      statusCode: statusCode,
+      codigo: codigo,
     );
   }
 
@@ -210,8 +162,9 @@ class HttpQuestGeneratorRepository implements QuestGeneratorRepository {
     final accessToken = await _tokenRepository.obtenerAccessToken();
     if (accessToken == null) {
       throw const ApiException(
-        'Tu sesión expiró, vuelve a iniciar sesión.',
+        'Tu sesión expiró. Vuelve a iniciar sesión.',
         statusCode: 401,
+        codigo: 'NO_AUTORIZADO',
       );
     }
 
@@ -243,7 +196,7 @@ class HttpQuestGeneratorRepository implements QuestGeneratorRepository {
       );
     } catch (_) {
       throw const ApiException(
-        'No se pudo conectar al servidor, revisa tu conexión.',
+        'No se pudo conectar con el servidor. Revisa tu conexión e intenta de nuevo.',
       );
     }
 
@@ -302,19 +255,67 @@ class HttpQuestGeneratorRepository implements QuestGeneratorRepository {
       }
     }
 
-    if (statusCode == 401) {
-      throw const ApiException('Tu sesión expiró, vuelve a iniciar sesión.', statusCode: 401);
-    }
+    String? codigo;
+    String? detalle;
+    try {
+      final Map<String, dynamic> data =
+          jsonDecode(response.body) as Map<String, dynamic>;
+      codigo = data['codigo'] as String?;
+      if (data['detalle'] is String) {
+        detalle = data['detalle'] as String;
+      } else if (data['error'] is String) {
+        detalle = data['error'] as String;
+      }
+    } catch (_) {}
 
-    if (statusCode == 400) {
-      throw ApiException('Datos de solicitud inválidos.', statusCode: 400);
-    }
+    final mensaje = _mapearError(
+      statusCode: statusCode,
+      codigo: codigo,
+      detalle: detalle,
+    );
 
-    if (statusCode == 502 || statusCode == 504) {
-      throw ApiException('No se pudo generar los encuentros extra.', statusCode: statusCode);
-    }
+    throw ApiException(
+      mensaje,
+      statusCode: statusCode,
+      codigo: codigo,
+    );
+  }
 
-    throw ApiException('Error del servidor.', statusCode: statusCode);
+  String _mapearError({
+    required int statusCode,
+    String? codigo,
+    String? detalle,
+  }) {
+    switch (codigo) {
+      case 'IA_TIMEOUT':
+        return 'La IA tardó demasiado en responder. Intenta de nuevo o prueba con un tema más específico.';
+      case 'IA_NO_DISPONIBLE':
+        return 'El servicio de IA no está disponible en este momento. Espera un minuto y vuelve a intentar.';
+      case 'IA_JSON_INVALIDO':
+        return 'La IA generó una respuesta con formato inválido. Intenta de nuevo.';
+      case 'IA_ESQUEMA_INVALIDO':
+        return 'La IA generó una respuesta con estructura incorrecta. Intenta de nuevo.';
+      case 'IA_POOL_INVALIDO':
+        return 'La narrativa generada no es válida. Intenta de nuevo.';
+      case 'IA_PREGUNTAS_INVALIDAS':
+        return 'Las preguntas generadas no son válidas. Intenta de nuevo o prueba con un tema más simple.';
+      case 'IA_OPCIONES_DESBALANCEADAS':
+        return 'Las opciones generadas están desbalanceadas. Intenta de nuevo.';
+      case 'IA_ENCUENTROS_INVALIDOS':
+        return 'Los encuentros generados no son válidos. Intenta de nuevo.';
+      case 'ERROR_PERSISTENCIA':
+        return 'Hubo un problema al guardar la quest. Intenta de nuevo.';
+      case 'NO_AUTORIZADO':
+        return 'Tu sesión expiró. Vuelve a iniciar sesión.';
+      default:
+        if (statusCode == 401) {
+          return 'Tu sesión expiró. Vuelve a iniciar sesión.';
+        }
+        if (statusCode == 400 && detalle != null && detalle.isNotEmpty) {
+          return detalle;
+        }
+        return 'No se pudo conectar con el servidor. Revisa tu conexión e intenta de nuevo.';
+    }
   }
 
   Encuentro _parsearEncuentro(Map<String, dynamic> encMap, String questId) {
