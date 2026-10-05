@@ -247,7 +247,12 @@ Deno.serve(async (req: Request) => {
       );
     }
     return jsonResponse(
-      { ok: false, codigo: resultadoIa.codigo, usar_fallback: true },
+      {
+        ok: false,
+        codigo: resultadoIa.codigo,
+        detalle: resultadoIa.detalle,
+        usar_fallback: true,
+      },
       502
     );
   }
@@ -262,7 +267,12 @@ Deno.serve(async (req: Request) => {
   if (!resultadoValidacion.valido) {
     registrarFalloIa(resultadoValidacion.codigo);
     return jsonResponse(
-      { ok: false, codigo: resultadoValidacion.codigo, usar_fallback: true },
+      {
+        ok: false,
+        codigo: resultadoValidacion.codigo,
+        detalle: (resultadoValidacion as { detalle?: string }).detalle ?? 'Error en validación estructural',
+        usar_fallback: true,
+      },
       502
     );
   }
@@ -272,9 +282,30 @@ Deno.serve(async (req: Request) => {
   const poolFinal = conPool ? runIa.pool_narrativo : poolEnMemoria;
   const preguntasExtraIa = runIa.preguntas_extra;
 
+// Red de seguridad: garantiza vida balanceada aunque la IA falle.
+const VIDA_MIN_NORMAL = 40;
+const VIDA_MAX_NORMAL = 60;
+const VIDA_MIN_JEFE = 80;
+const VIDA_MAX_JEFE = 120;
+
+// deno-lint-ignore no-explicit-any
+function normalizarVidaEnemigos(encuentros: any[]): void {
+  for (const enc of encuentros) {
+    const esJefe = enc.tipo_encuentro === 'jefe';
+    const min = esJefe ? VIDA_MIN_JEFE : VIDA_MIN_NORMAL;
+    const max = esJefe ? VIDA_MAX_JEFE : VIDA_MAX_NORMAL;
+    const vida = enc.vida_enemigo;
+    if (typeof vida !== 'number' || vida < min || vida > max) {
+      enc.vida_enemigo = esJefe ? 100 : 50;
+    }
+  }
+}
+
   // 10 y 11. Barajar opciones (Fisher-Yates), asignar letras y calcular vida_enemigo
   const encuentrosQuestParaRpc = questIa.encuentros.map((encuentro) => {
-    const vidaEnemigo = calcularVidaEnemigo(dificultad, encuentro.tipo_encuentro);
+    const vidaEnemigo = typeof encuentro.vida_enemigo === 'number'
+      ? encuentro.vida_enemigo
+      : calcularVidaEnemigo(dificultad, encuentro.tipo_encuentro);
     const opcionesBarajadas = barajarArray(encuentro.opciones).map((op, idx) => ({
       letra: LETRAS[idx],
       texto: op.texto,
@@ -287,6 +318,7 @@ Deno.serve(async (req: Request) => {
       tipo_encuentro: encuentro.tipo_encuentro,
       dificultad,
       vida_enemigo: vidaEnemigo,
+      concepto: encuentro.concepto ?? '',
       enemigo: encuentro.enemigo,
       pregunta: encuentro.pregunta,
       codigo: encuentro.codigo ?? null,
@@ -295,7 +327,9 @@ Deno.serve(async (req: Request) => {
   });
 
   const preguntasExtraParaRpc = preguntasExtraIa.map((encuentro) => {
-    const vidaEnemigo = calcularVidaEnemigo(dificultad, encuentro.tipo_encuentro);
+    const vidaEnemigo = typeof encuentro.vida_enemigo === 'number'
+      ? encuentro.vida_enemigo
+      : calcularVidaEnemigo(dificultad, encuentro.tipo_encuentro);
     const opcionesBarajadas = barajarArray(encuentro.opciones).map((op, idx) => ({
       letra: LETRAS[idx],
       texto: op.texto,
@@ -308,12 +342,19 @@ Deno.serve(async (req: Request) => {
       tipo_encuentro: encuentro.tipo_encuentro,
       dificultad,
       vida_enemigo: vidaEnemigo,
+      concepto: encuentro.concepto ?? '',
       enemigo: encuentro.enemigo,
       pregunta: encuentro.pregunta,
       codigo: encuentro.codigo ?? null,
       opciones: opcionesBarajadas,
     };
   });
+
+  // Normalización defensiva de vida antes del RPC
+  normalizarVidaEnemigos(encuentrosQuestParaRpc);
+  if (Array.isArray(preguntasExtraParaRpc)) {
+    normalizarVidaEnemigos(preguntasExtraParaRpc);
+  }
 
   // 12. Generar semilla aleatoria para reproducibilidad
   const semilla = Math.floor(Math.random() * 2147483647);
@@ -413,6 +454,7 @@ Deno.serve(async (req: Request) => {
       tipo_encuentro: enc.tipo_encuentro,
       dificultad: enc.dificultad,
       vida_enemigo: enc.vida_enemigo,
+      concepto: enc.concepto,
       enemigo: enc.enemigo,
       pregunta: enc.pregunta,
       codigo: enc.codigo,
@@ -432,6 +474,7 @@ Deno.serve(async (req: Request) => {
     tipo_encuentro: enc.tipo_encuentro,
     dificultad: enc.dificultad,
     vida_enemigo: enc.vida_enemigo,
+    concepto: enc.concepto,
     enemigo: enc.enemigo,
     pregunta: enc.pregunta,
     codigo: enc.codigo,

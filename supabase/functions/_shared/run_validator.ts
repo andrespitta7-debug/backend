@@ -32,11 +32,11 @@ export type ResultadoValidacionPool =
 
 export type ResultadoValidacionPreguntasExtra =
   | { valido: true; preguntas: EncuentroIa[] }
-  | { valido: false; codigo: 'IA_PREGUNTAS_INVALIDAS' };
+  | { valido: false; codigo: 'IA_PREGUNTAS_INVALIDAS'; detalle?: string };
 
 export type ResultadoValidacionRun =
   | { valido: true; run: RunCompletaIa }
-  | { valido: false; codigo: string };
+  | { valido: false; codigo: string; detalle?: string };
 
 export const CATEGORIAS_NARRATIVAS = [
   'intro',
@@ -63,7 +63,7 @@ function normalizarTexto(texto: string): string {
 /**
  * Valida un pool narrativo según reglas N0–N3:
  * N0: Tiene exactamente las 8 categorías requeridas.
- * N1: Cada categoría contiene exactamente 4 variantes.
+ * N1: Cada categoría contiene exactamente 3 variantes.
  * N2: Cada variante es un string no vacío de 20 a 250 caracteres.
  * N3: Higiene: sin HTML ni formato markdown.
  */
@@ -94,12 +94,12 @@ export function validarPoolNarrativo(pool: unknown): ResultadoValidacionPool {
 
     const variantes = poolRecord[cat];
 
-    // N1: Exactamente 4 variantes por categoría
-    if (!Array.isArray(variantes) || variantes.length !== 4) {
+    // N1: Exactamente 3 variantes por categoría
+    if (!Array.isArray(variantes) || variantes.length !== 3) {
       console.error(
         '[validarPoolNarrativo] N1 falla en categoría',
         cat,
-        ': se esperaban 4 variantes, se recibieron',
+        ': se esperaban 3 variantes, se recibieron',
         Array.isArray(variantes) ? variantes.length : typeof variantes
       );
       return { valido: false, codigo: 'IA_POOL_INVALIDO' };
@@ -149,7 +149,7 @@ export function validarPreguntasExtra(
       '[validarPreguntasExtra] E0 falla: se esperaban 9 preguntas, se recibieron',
       Array.isArray(preguntas) ? preguntas.length : typeof preguntas
     );
-    return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+    return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `E0: se esperaban 9 preguntas, se recibieron ${Array.isArray(preguntas) ? preguntas.length : typeof preguntas}` };
   }
 
   for (let i = 0; i < 9; i++) {
@@ -157,7 +157,7 @@ export function validarPreguntasExtra(
 
     if (!enc || typeof enc !== 'object' || Array.isArray(enc)) {
       console.error('[validarPreguntasExtra] Pregunta', i, 'falla: no es un objeto válido');
-      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} no es un objeto válido` };
     }
 
     // E2: Números 4 a 12 consecutivos
@@ -170,7 +170,7 @@ export function validarPreguntasExtra(
         'pero se esperaba',
         i + 4
       );
-      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} E2: numero es ${enc.numero}, esperado ${i + 4}` };
     }
 
     // E1: Estructura de encuentro (V2, V3)
@@ -184,7 +184,7 @@ export function validarPreguntasExtra(
         'V2 falla: tipo_encuentro inválido:',
         enc.tipo_encuentro
       );
-      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V2: tipo_encuentro inválido ${enc.tipo_encuentro}` };
     }
 
     if (
@@ -200,7 +200,7 @@ export function validarPreguntasExtra(
         '(rango 3-40):',
         enc.enemigo
       );
-      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V3: enemigo '${enc.enemigo}' longitud ${enc.enemigo?.trim?.()?.length} fuera de rango 3-40` };
     }
 
     if (
@@ -216,23 +216,23 @@ export function validarPreguntasExtra(
         '(rango 10-400):',
         enc.pregunta
       );
-      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V3: pregunta longitud ${enc.pregunta?.trim?.()?.length} fuera de rango 10-400` };
     }
 
     if (enc.codigo !== null && typeof enc.codigo !== 'string') {
       console.error('[validarPreguntasExtra] Pregunta', i, 'V2 falla: codigo no es string ni null');
-      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V2: codigo no es string ni null` };
     }
 
     if (typeof enc.codigo === 'string' && enc.codigo.length > 600) {
       console.error('[validarPreguntasExtra] Pregunta', i, 'V3 falla: codigo con longitud > 600:', enc.codigo.length);
-      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V3: codigo longitud > 600` };
     }
 
     // V7: código debe ser null en categoría 'libre'
     if (categoria === 'libre' && enc.codigo !== null) {
       console.error('[validarPreguntasExtra] Pregunta', i, 'V7 falla: codigo debe ser null en categoria libre');
-      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V7: codigo debe ser null en categoria libre` };
     }
 
     // V8: Higiene en encuentro
@@ -242,7 +242,7 @@ export function validarPreguntasExtra(
         i,
         'V8 falla: HTML/markdown detectado en enemigo o pregunta'
       );
-      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V8: markdown detectado en enemigo o pregunta` };
     }
 
     // Opciones (V5, V6, V8, V9)
@@ -253,7 +253,7 @@ export function validarPreguntasExtra(
         'V4/V5 falla: se esperaban 4 opciones, se recibieron',
         Array.isArray(enc.opciones) ? enc.opciones.length : typeof enc.opciones
       );
-      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V4: se esperaban 4 opciones` };
     }
 
     let cantCalidad2 = 0;
@@ -263,7 +263,7 @@ export function validarPreguntasExtra(
     for (const op of enc.opciones) {
       if (!op || typeof op !== 'object' || Array.isArray(op)) {
         console.error('[validarPreguntasExtra] Pregunta', i, 'falla: opción no es objeto válido');
-        return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+        return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} opción no es objeto válido` };
       }
 
       if (
@@ -279,7 +279,7 @@ export function validarPreguntasExtra(
           '(rango 3-200):',
           op.texto
         );
-        return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+        return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V3: texto opción longitud ${op.texto?.trim?.()?.length} fuera de rango 3-200` };
       }
 
       if (
@@ -288,7 +288,7 @@ export function validarPreguntasExtra(
         ![0, 1, 2].includes(op.calidad)
       ) {
         console.error('[validarPreguntasExtra] Pregunta', i, 'V2 falla: calidad inválida:', op.calidad);
-        return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+        return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V2: calidad inválida ${op.calidad}` };
       }
 
       if (
@@ -304,7 +304,7 @@ export function validarPreguntasExtra(
           '(rango 10-300):',
           op.explicacion
         );
-        return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+        return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V3: explicacion longitud ${op.explicacion?.trim?.()?.length} fuera de rango 10-300 ('${op.explicacion}')` };
       }
 
       if (REGEX_HIGIENE.test(op.texto) || REGEX_HIGIENE.test(op.explicacion)) {
@@ -315,7 +315,7 @@ export function validarPreguntasExtra(
           op.texto,
           op.explicacion
         );
-        return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+        return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V8: markdown detectado en opción` };
       }
 
       if (op.calidad === 2) cantCalidad2++;
@@ -324,7 +324,7 @@ export function validarPreguntasExtra(
       const textoNorm = normalizarTexto(op.texto);
       if (textosVistos.has(textoNorm)) {
         console.error('[validarPreguntasExtra] Pregunta', i, 'V6 falla: textos de opciones repetidos:', op.texto);
-        return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+        return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V6: textos de opciones repetidos` };
       }
       textosVistos.add(textoNorm);
     }
@@ -339,7 +339,7 @@ export function validarPreguntasExtra(
         cantCalidad0,
         '(esperada >= 1)'
       );
-      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V5: calidad 2 = ${cantCalidad2} (esp 1), calidad 0 = ${cantCalidad0} (esp >= 1)` };
     }
 
     // V9: Balance de longitud de opciones
@@ -362,7 +362,11 @@ export function validarPreguntasExtra(
           'chars). Opción correcta:',
           opcionCorrecta.texto
         );
-        return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS' };
+        return {
+          valido: false,
+          codigo: 'IA_PREGUNTAS_INVALIDAS',
+          detalle: `Pregunta ${i + 4} V9: opción correcta (${longitudCorrecta}c) excede el doble del promedio (${promedioOtras.toFixed(1)}c)`
+        };
       }
     }
   }
@@ -408,12 +412,14 @@ export function validarRunCompleta(
   // 1. Extraer y validar Quest
   const questData = data.quest ?? (data.titulo && data.encuentros ? data : null);
   if (!questData) {
+    console.error('[validarRunCompleta] falta clave quest en data:', Object.keys(data));
     return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
   }
 
   const resQuest = validarQuestJson(JSON.stringify(questData), categoria);
   if (!resQuest.valido) {
-    return { valido: false, codigo: resQuest.codigo };
+    console.error('[validarRunCompleta] resQuest inválido:', resQuest.detalle);
+    return { valido: false, codigo: resQuest.codigo, detalle: resQuest.detalle };
   }
 
   // 2. Validar Pool Narrativo si es requerido
@@ -421,7 +427,7 @@ export function validarRunCompleta(
   if (requierePool) {
     const resPool = validarPoolNarrativo(data.pool_narrativo);
     if (!resPool.valido) {
-      return { valido: false, codigo: resPool.codigo };
+      return { valido: false, codigo: resPool.codigo, detalle: 'Error en pool narrativo' };
     }
     poolValido = resPool.pool;
   }
@@ -429,7 +435,7 @@ export function validarRunCompleta(
   // 3. Validar Preguntas Extra
   const resPreguntas = validarPreguntasExtra(data.preguntas_extra, categoria);
   if (!resPreguntas.valido) {
-    return { valido: false, codigo: resPreguntas.codigo };
+    return { valido: false, codigo: resPreguntas.codigo, detalle: resPreguntas.detalle };
   }
 
   return {

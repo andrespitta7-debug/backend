@@ -17,7 +17,7 @@ export interface QuestGenerationParams {
 
 export type QuestGenerationResult =
   | { ok: true; texto: string; proveedor: string }
-  | { ok: false; codigo: string; proveedor: string };
+  | { ok: false; codigo: string; proveedor: string; detalle?: string };
 
 export interface AiProvider {
   readonly nombre: string;

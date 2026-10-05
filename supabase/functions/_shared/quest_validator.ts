@@ -11,6 +11,8 @@ export interface EncuentroIa {
   numero: number;
   tipo_encuentro: 'normal' | 'jefe';
   enemigo: string;
+  vida_enemigo?: number;
+  concepto?: string;
   pregunta: string;
   codigo: string | null;
   opciones: OpcionIa[];
@@ -24,7 +26,7 @@ export interface QuestIa {
 
 export type ResultadoValidacionQuest =
   | { valido: true; quest: QuestIa }
-  | { valido: false; codigo: string };
+  | { valido: false; codigo: string; detalle?: string };
 
 function normalizarTexto(texto: string): string {
   return texto
@@ -65,87 +67,96 @@ export function validarQuestJson(
 
   // V2: Estructura y tipos requeridos
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
-    return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+    return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: 'data no es un objeto' };
   }
   if (typeof data.titulo !== 'string' || data.titulo.trim() === '') {
-    return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+    return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: 'titulo faltante o vacio' };
   }
   if (typeof data.descripcion !== 'string' || data.descripcion.trim() === '') {
-    return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+    return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: 'descripcion faltante o vacia' };
   }
   if (!Array.isArray(data.encuentros)) {
-    return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+    return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: 'encuentros no es un array' };
   }
 
-  for (const enc of data.encuentros) {
+  for (let i = 0; i < data.encuentros.length; i++) {
+    const enc = data.encuentros[i];
     if (!enc || typeof enc !== 'object' || Array.isArray(enc)) {
-      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} no es un objeto` };
     }
     if (typeof enc.numero !== 'number' || !Number.isInteger(enc.numero)) {
-      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} numero invalido` };
     }
     if (
       typeof enc.tipo_encuentro !== 'string' ||
       !['normal', 'jefe'].includes(enc.tipo_encuentro)
     ) {
-      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} tipo_encuentro invalido` };
     }
     if (typeof enc.enemigo !== 'string' || enc.enemigo.trim() === '') {
-      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} enemigo faltante o vacio` };
     }
     if (typeof enc.pregunta !== 'string' || enc.pregunta.trim() === '') {
-      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} pregunta faltante o vacia` };
     }
     if (enc.codigo !== null && typeof enc.codigo !== 'string') {
-      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} codigo invalido` };
     }
     if (!Array.isArray(enc.opciones)) {
-      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} opciones no es un array` };
     }
-    for (const op of enc.opciones) {
+    for (let j = 0; j < enc.opciones.length; j++) {
+      const op = enc.opciones[j];
       if (!op || typeof op !== 'object' || Array.isArray(op)) {
-        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} opcion ${j} no es un objeto` };
       }
       if (typeof op.texto !== 'string' || op.texto.trim() === '') {
-        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} opcion ${j} texto vacio` };
       }
       if (
         typeof op.calidad !== 'number' ||
         !Number.isInteger(op.calidad) ||
         ![0, 1, 2].includes(op.calidad)
       ) {
-        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} opcion ${j} calidad invalida (${op.calidad})` };
       }
       if (typeof op.explicacion !== 'string' || op.explicacion.trim() === '') {
-        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} opcion ${j} explicacion vacia` };
       }
     }
   }
 
   // V3: Longitudes dentro de los rangos de la sección 4
   if (data.titulo.length < 5 || data.titulo.length > 80) {
-    return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+    console.error('[validarQuestJson] titulo fuera de rango (5-80):', data.titulo.length, data.titulo);
+    return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `titulo longitud ${data.titulo.length} fuera de rango 5-80` };
   }
   if (data.descripcion.length < 10 || data.descripcion.length > 300) {
-    return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+    console.error('[validarQuestJson] descripcion fuera de rango (10-300):', data.descripcion.length, data.descripcion);
+    return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `descripcion longitud ${data.descripcion.length} fuera de rango 10-300` };
   }
 
   for (const enc of data.encuentros) {
     if (enc.enemigo.length < 3 || enc.enemigo.length > 40) {
-      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+      console.error('[validarQuestJson] enemigo fuera de rango (3-40):', enc.enemigo?.length, enc.enemigo);
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `enemigo longitud ${enc.enemigo?.length} fuera de rango 3-40` };
     }
     if (enc.pregunta.length < 10 || enc.pregunta.length > 400) {
-      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+      console.error('[validarQuestJson] pregunta fuera de rango (10-400):', enc.pregunta?.length, enc.pregunta);
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `pregunta longitud ${enc.pregunta?.length} fuera de rango 10-400` };
     }
     if (typeof enc.codigo === 'string' && enc.codigo.length > 600) {
-      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+      console.error('[validarQuestJson] codigo fuera de rango (>600):', enc.codigo.length);
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `codigo longitud ${enc.codigo.length} > 600` };
     }
     for (const op of enc.opciones) {
       if (op.texto.length < 3 || op.texto.length > 200) {
-        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+        console.error('[validarQuestJson] opcion texto fuera de rango (3-200):', op.texto?.length, op.texto);
+        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `opcion texto longitud ${op.texto?.length} fuera de rango 3-200` };
       }
       if (op.explicacion.length < 10 || op.explicacion.length > 300) {
-        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
+        console.error('[validarQuestJson] opcion explicacion fuera de rango (10-300):', op.explicacion?.length, op.explicacion);
+        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `opcion explicacion longitud ${op.explicacion?.length} fuera de rango 10-300` };
       }
     }
   }

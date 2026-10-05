@@ -33,6 +33,16 @@ export const QUEST_JSON_SCHEMA = {
             type: 'string',
             description: 'Nombre temático del enemigo (3 a 40 caracteres)',
           },
+          vida_enemigo: {
+            type: 'integer',
+            description: 'Puntos de vida del enemigo (normal: 40-60, jefe: 80-120)',
+          },
+          concepto: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 40,
+            description: 'Concepto evaluado por la pregunta (máx. 40 caracteres)',
+          },
           pregunta: {
             type: 'string',
             description: 'Pregunta o desafío técnico del encuentro (10 a 400 caracteres)',
@@ -71,6 +81,8 @@ export const QUEST_JSON_SCHEMA = {
           'numero',
           'tipo_encuentro',
           'enemigo',
+          'vida_enemigo',
+          'concepto',
           'pregunta',
           'codigo',
           'opciones',

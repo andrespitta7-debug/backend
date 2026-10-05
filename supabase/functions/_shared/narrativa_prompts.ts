@@ -2,180 +2,90 @@
 
 import { MEGA_JSON_SCHEMA, RUN_SIN_POOL_SCHEMA } from './run_schema.ts';
 
-export const SYSTEM_PROMPT_NARRATIVA = `Eres el narrador de SysQuest, un RPG educativo estilo roguelike para estudiantes de cualquier disciplina.
+export const SYSTEM_PROMPT_NARRATIVA = `Eres el narrador de SysQuest, un RPG educativo por turnos para TODO PÚBLICO. El jugador escribe un tema libre y tú generas UNA SOLA respuesta JSON con quest, pool narrativo y preguntas extra.
 
-Tu trabajo es generar UNA SOLA RESPUESTA JSON con contenido pedagógico y narrativo de alta calidad.
+DOMINIO Y TONO
+- El dominio es el LITERAL del texto del usuario, sin reinterpretarlo. Si dudas, asume el literal.
+- Adapta tono, vocabulario y ejemplos al dominio. Fútbol: reglas, historia, táctica, jugadores, torneos. Cocina: ingredientes, técnicas, recetas, historia culinaria.
+- TODO (preguntas, opciones, enemigos, títulos, descripciones, narrativa) gira solo en torno al tema. Prohibido derivar a tecnología, ingeniería o "sistemas" salvo que ese sea el tema.
+- Lenguaje accesible para público general; evita jerga innecesaria.
+- Enemigos con nombre temático (fútbol: "Balón Perdido", "Árbitro Corrupto"; cocina: "Sartén Ardiente", "Cuchillo Desafilado"). Títulos que aludan al tema.
 
-SOBRE LA NARRATIVA:
-- Segunda persona ("Entras en...", "Ves...", "Derrotas al...").
-- Tono épico pero conciso.
-- Máximo 2 oraciones por variante (20-250 caracteres por variante).
-- Referencias al tema específico que el usuario indica (puede ser historia, ciencia, arte, música, matemáticas, idiomas, etc.). Adapta el tono y el vocabulario al dominio del tema.
-- CERO clichés genéricos ("una aventura épica", "un viaje inolvidable").
-- Variedad: cada variante debe ser distinta en tono, estructura y contenido.
+MAPA DE CONOCIMIENTO Y ANTI-REPETICIÓN
+- Antes de escribir, construye mentalmente un árbol tema → mínimo 4 subtemas → conceptos específicos. Asigna un concepto distinto a cada una de las 12 preguntas (3 de la quest + 9 extra), repartidos entre subtemas (máx. 3 preguntas por subtema).
+- Prohibido que dos preguntas evalúen el MISMO concepto, aunque cambien palabras, escenario o formato.
+- Varía el ángulo de evaluación (definición, causa, aplicación, comparación, error común, caso práctico) y el contexto/escenario.
+- Cada encuentro lleva "concepto" (máx. 6 palabras): lo que evalúa. No se pueden repetir.
 
-CATEGORÍAS NARRATIVAS (4 variantes cada una):
-- intro: apertura de la run. El jugador entra al "mundo" o "mazmorra" del tema.
-- entre_combates: victoria normal sobre un enemigo. El jugador avanza.
-- jefe_avistado: aparición del jefe. Momento de tensión.
-- ronda_completada: fin de ronda (3 enemigos derrotados). Momento de triunfo.
-- retirada: el jugador decide retirarse. Cierre digno.
-- muerte: el jugador pierde. Muerte narrativa (no violenta, creativa).
-- critico: el jugador hace un crítico. Bonus narrativo corto.
-- contraataque: el jugador falla. El enemigo contraataca.
+QUEST PRINCIPAL
+- Exactamente 3 encuentros numerados 1, 2, 3. Encuentros 1 y 2: "normal". Encuentro 3: "jefe", el más desafiante.
+- Contenido educativamente correcto y verificable.
 
-SOBRE LA QUEST PRINCIPAL:
-- Exactamente 3 encuentros pedagógicos numerados 1, 2 y 3.
-- El contenido de las preguntas debe ser educativamente correcto para el tema indicado, sin asumir que pertenece al dominio de la tecnología.
-- Encuentros 1 y 2 son "normal", encuentro 3 es "jefe" y debe ser el más desafiante.
-- 4 opciones por encuentro: exactamente una con calidad 2 (óptima), al menos una con calidad 0 (incorrecta plausible), y las restantes con calidad 1 (parcial o subóptima).
-- Cada opción incluye una explicación pedagógica clara y concisa de por qué tiene esa calidad (10 a 300 caracteres).
+PREGUNTAS EXTRA
+- Exactamente 9, numeradas 4 a 12, todas tipo_encuentro "normal", con enemigos temáticos variados.
 
-REGLA DE COHERENCIA TEMÁTICA (CRÍTICA):
-- TODAS las preguntas, enemigos, títulos, descripciones y variantes narrativas DEBEN estar estrictamente relacionadas con el tema indicado por el usuario.
-- Si el tema es "fútbol", TODAS las preguntas deben ser sobre fútbol (reglas, historia, jugadores, táctica, etc.). NO generes preguntas sobre programación, matemáticas ni ningún otro dominio.
-- Si el tema es "cocina", TODAS las preguntas deben ser sobre cocina.
-- Si el tema es "guitarra", TODAS las preguntas deben ser sobre guitarra.
-- Si el tema es una materia académica (ej. "álgebra"), las preguntas deben ser de esa materia específica, no de "ciencias" en general.
-- Los nombres de los enemigos también deben reflejar el tema (ej. para "fútbol": "Balón Perdido", "Árbitro Corrupto"; para "cocina": "Sartén Ardiente", "Cuchillo Desafilado").
-- Los títulos de la quest deben aludir al tema, no ser genéricos.
-- Si dudas de qué dominio es el tema, asume que es el dominio LITERAL de lo que el usuario escribió, sin reinterpretarlo.
+OPCIONES (quest y extra)
+- 4 opciones: exactamente una calidad 2 (óptima), al menos una calidad 0 (incorrecta pero plausible), el resto calidad 1 (parcial o subóptima).
+- Cada opción con explicación pedagógica breve de por qué tiene esa calidad (10-300 caracteres).
+- VALIDACIÓN V9: las 4 opciones deben tener longitud similar (±30% de la media del encuentro). La opción correcta NO debe ser la más larga.
 
-SOBRE LAS PREGUNTAS EXTRA:
-- Exactamente 9 preguntas pedagógicas adicionales numeradas del 4 al 12 (consecutivas).
-- Mismas reglas de opciones que la quest (4 opciones, exactamente una calidad 2, al menos una calidad 0, resto calidad 1).
-- Tipo_encuentro: todas con tipo_encuentro "normal" (el jefe solo se evalúa en el encuentro 3).
-- Enemigos temáticos variados y desafiantes, estrechamente vinculados al tema.
+VIDA DE ENEMIGOS (el daño por acierto es fijo: 25 crítico, 12 normal)
+- Normal: vida 40-60 (2-4 aciertos). Jefe: vida 80-120 (4-6 aciertos).
+- Prohibido vida inferior a 40: ningún enemigo debe morir de un golpe.
 
-REGLA CRÍTICA DE LONGITUD DE OPCIONES:
-- En cada encuentro (tanto de la quest como de las preguntas extra), las 4 opciones deben tener longitud similar (±30% respecto a la media del encuentro).
-- La opción correcta (calidad 2) NO debe ser significativamente más larga ni exceder el doble del promedio de las demás opciones.
+NARRATIVA
+- Pool de 8 categorías, 3 variantes cada una (24 en total):
+  intro: apertura, el jugador entra al mundo del tema.
+  entre_combates: victoria normal, el jugador avanza.
+  jefe_avistado: aparece el jefe, tensión.
+  ronda_completada: fin de ronda (3 enemigos derrotados), triunfo.
+  retirada: el jugador se retira, cierre digno.
+  muerte: el jugador pierde; creativa, no violenta, reflejando el tema.
+  critico: golpe crítico, bonus muy breve.
+  contraataque: el jugador falla y el enemigo contraataca.
+- Segunda persona ("Entras en...", "Ves...", "Derrotas al..."). Máx. 2 oraciones, 20-250 caracteres por variante.
+- Cada variante menciona elementos concretos del tema (términos, objetos, figuras, lugares).
+- Prohibidos clichés: "una aventura épica", "un viaje inolvidable", "el destino te llama", "tu leyenda comienza" y similares.
+- Las variantes de una misma categoría difieren en tono, estructura y contenido.
+- No nombres enemigos ni hechos concretos de un encuentro: deben servir para cualquier combate de su categoría.
 
-FORMATO DE SALIDA:
-Responde ÚNICAMENTE con el objeto JSON válido. Sin texto antes ni después. Sin bloques markdown (\`\`\`json).`;
+FORMATO DE SALIDA
+Solo el objeto JSON válido y compacto (sin espacios ni saltos de línea innecesarios), sin texto antes o después y sin bloques markdown.`;
 
 export function construirUserPromptRun(
   tema: string,
   categoria: string,
   dificultad: string,
-  conPool: boolean
+  conPool: boolean,
+  conceptosPrevios: string[] = []
 ): string {
-  let instruccionCodigo: string;
-  if (categoria === 'libre') {
-    instruccionCodigo =
-      'El campo "codigo" debe ser null en todos los encuentros (tanto en la quest como en preguntas extra).';
-  } else {
-    instruccionCodigo =
-      'El campo "codigo" puede contener un fragmento breve (máx. 600 caracteres, con saltos de línea \\n) cuando la pregunta lo requiera, o null si no hace falta. En la categoría debug, prefiere incluir código con el error.';
-  }
+  const instruccionCodigo =
+    categoria === 'libre'
+      ? '"codigo": null en todos los encuentros.'
+      : '"codigo": fragmento breve (máx. 600 caracteres, saltos de línea \\n) solo si el tema es de programación/informática y la pregunta lo requiere; en cualquier otro caso null.';
 
-  if (conPool) {
-    return `Genera una run completa (quest + pool narrativo + preguntas extra) con estos parámetros:
-- Categoría: ${categoria}
-- Dificultad: ${dificultad}
-- TEMA OBLIGATORIO: <<<${tema}>>>
-  TODO el contenido (preguntas, opciones, enemigos, narrativa) DEBE
-  girar exclusivamente alrededor de "${tema}". No generes contenido
-  genérico ni de otros dominios.
+  const bloquePrevios = conceptosPrevios.length
+    ? `\nCONCEPTOS YA EVALUADOS (PROHIBIDOS): ${conceptosPrevios.join('; ')}.\nCambia el ángulo de evaluación y el contexto/escenario; usa conceptos nuevos de subtemas distintos.\n`
+    : '';
 
+  const encuentro =
+    '{"numero":n,"tipo_encuentro":"normal|jefe","enemigo":str,"vida_enemigo":int,"concepto":str,"pregunta":str,"codigo":str|null,"opciones":[{"texto":str,"calidad":0|1|2,"explicacion":str}x4]}';
+
+  const estructura = conPool
+    ? `{"quest":{"titulo":str,"descripcion":str,"encuentros":[3 x ${encuentro}]},"pool_narrativo":{"intro":[3],"entre_combates":[3],"jefe_avistado":[3],"ronda_completada":[3],"retirada":[3],"muerte":[3],"critico":[3],"contraataque":[3]},"preguntas_extra":[9 x ${encuentro}, numero 4-12]}`
+    : `{"quest":{"titulo":str,"descripcion":str,"encuentros":[3 x ${encuentro}]},"preguntas_extra":[9 x ${encuentro}, numero 4-12]}`;
+
+  const esquema = JSON.stringify(conPool ? MEGA_JSON_SCHEMA : RUN_SIN_POOL_SCHEMA);
+
+  return `Genera ${conPool ? 'quest + pool_narrativo + preguntas_extra' : 'quest + preguntas_extra'}.
+Categoría: ${categoria} | Dificultad: ${dificultad}
+TEMA (dominio literal): <<<${tema}>>>
+Todo el contenido gira solo sobre "${tema}".
 ${instruccionCodigo}
+${bloquePrevios}
+ESTRUCTURA: ${estructura}
 
-ESTRUCTURA JSON REQUERIDA (debes devolver un objeto con las 3 claves: "quest", "pool_narrativo", "preguntas_extra"):
-{
-  "quest": {
-    "titulo": "string, 5 a 80 caracteres",
-    "descripcion": "string, 10 a 300 caracteres",
-    "encuentros": [
-      {
-        "numero": 1,
-        "tipo_encuentro": "normal",
-        "enemigo": "string, 3 a 40 caracteres",
-        "pregunta": "string, 10 a 400 caracteres",
-        "codigo": "string o null",
-        "opciones": [
-          { "texto": "string, 3 a 200", "calidad": 2, "explicacion": "string, 10 a 300" }
-        ]
-      }
-      // Encuentros 1 y 2 (normal), encuentro 3 (jefe)
-    ]
-  },
-  "pool_narrativo": {
-    "intro": ["4 variantes de 20 a 250 caracteres cada una"],
-    "entre_combates": ["4 variantes de 20 a 250 caracteres cada una"],
-    "jefe_avistado": ["4 variantes de 20 a 250 caracteres cada una"],
-    "ronda_completada": ["4 variantes de 20 a 250 caracteres cada una"],
-    "retirada": ["4 variantes de 20 a 250 caracteres cada una"],
-    "muerte": ["4 variantes de 20 a 250 caracteres cada una"],
-    "critico": ["4 variantes de 20 a 250 caracteres cada una"],
-    "contraataque": ["4 variantes de 20 a 250 caracteres cada una"]
-  },
-  "preguntas_extra": [
-    // Exactamente 9 preguntas numeradas consecutivamente del 4 al 12
-    {
-      "numero": 4,
-      "tipo_encuentro": "normal",
-      "enemigo": "string, 3 a 40 caracteres",
-      "pregunta": "string, 10 a 400 caracteres",
-      "codigo": "string o null",
-      "opciones": [
-        { "texto": "string, 3 a 200", "calidad": 2, "explicacion": "string, 10 a 300" }
-      ]
-    }
-  ]
-}
+ESQUEMA: ${esquema}
 
-ESQUEMA FORMAL:
-${JSON.stringify(MEGA_JSON_SCHEMA, null, 2)}
-
-Devuelve SOLO el objeto JSON sin texto adicional ni bloques markdown.`;
-  } else {
-    return `Genera una quest pedagógica y sus preguntas extra con estos parámetros:
-- Categoría: ${categoria}
-- Dificultad: ${dificultad}
-- TEMA OBLIGATORIO: <<<${tema}>>>
-  TODO el contenido (preguntas, opciones, enemigos, narrativa) DEBE
-  girar exclusivamente alrededor de "${tema}". No generes contenido
-  genérico ni de otros dominios.
-
-${instruccionCodigo}
-
-ESTRUCTURA JSON REQUERIDA (debes devolver un objeto con las 2 claves: "quest" y "preguntas_extra"):
-{
-  "quest": {
-    "titulo": "string, 5 a 80 caracteres",
-    "descripcion": "string, 10 a 300 caracteres",
-    "encuentros": [
-      {
-        "numero": 1,
-        "tipo_encuentro": "normal",
-        "enemigo": "string, 3 a 40 caracteres",
-        "pregunta": "string, 10 a 400 caracteres",
-        "codigo": "string o null",
-        "opciones": [
-          { "texto": "string, 3 a 200", "calidad": 2, "explicacion": "string, 10 a 300" }
-        ]
-      }
-      // Encuentros 1 y 2 (normal), encuentro 3 (jefe)
-    ]
-  },
-  "preguntas_extra": [
-    // Exactamente 9 preguntas numeradas consecutivamente del 4 al 12
-    {
-      "numero": 4,
-      "tipo_encuentro": "normal",
-      "enemigo": "string, 3 a 40 caracteres",
-      "pregunta": "string, 10 a 400 caracteres",
-      "codigo": "string o null",
-      "opciones": [
-        { "texto": "string, 3 a 200", "calidad": 2, "explicacion": "string, 10 a 300" }
-      ]
-    }
-  ]
-}
-
-ESQUEMA FORMAL:
-${JSON.stringify(RUN_SIN_POOL_SCHEMA, null, 2)}
-
-Devuelve SOLO el objeto JSON sin texto adicional ni bloques markdown.`;
-  }
+Devuelve SOLO el JSON.`;
 }

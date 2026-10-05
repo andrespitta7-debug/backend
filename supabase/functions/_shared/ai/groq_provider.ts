@@ -53,6 +53,7 @@ export class GroqProvider implements AiProvider {
           ok: false,
           codigo: 'IA_NO_DISPONIBLE',
           proveedor: this.nombre,
+          detalle: `${response.status}: ${errorText}`,
         };
       }
 
@@ -83,6 +84,7 @@ export class GroqProvider implements AiProvider {
         ok: false,
         codigo: 'IA_NO_DISPONIBLE',
         proveedor: this.nombre,
+        detalle: error instanceof Error ? error.message : String(error),
       };
     } finally {
       clearTimeout(timeoutId);
