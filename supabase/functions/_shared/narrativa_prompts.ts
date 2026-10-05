@@ -89,3 +89,29 @@ ESQUEMA: ${esquema}
 
 Devuelve SOLO el JSON.`;
 }
+
+export function construirUserPromptEncuentrosExtra(
+  tema: string,
+  categoria: string,
+  dificultad: string,
+  ultimoNumero: number
+): string {
+  const numeros = `${ultimoNumero + 1}, ${ultimoNumero + 2}, ${ultimoNumero + 3}`;
+  return `Genera EXACTAMENTE 3 encuentros pedagógicos nuevos.
+Categoría: ${categoria} | Dificultad: ${dificultad}
+TEMA (dominio literal): <<<${tema}>>>
+
+REGLAS:
+- Numeración: ${numeros} (consecutivos).
+- Todos tipo_encuentro: "normal".
+- Enemigos temáticos (no repetir nombres anteriores si puedes).
+- Cada encuentro con campo "concepto" (máx. 6 palabras) DISTINTO.
+- Vida enemigo entre 40 y 60.
+- 4 opciones por encuentro: una calidad 2, al menos una calidad 0, el resto calidad 1.
+- Cada opción con "explicacion" (10-300 caracteres).
+- V9: las 4 opciones con longitud similar (±30% de la media). La correcta NO debe ser la más larga.
+- Contenido coherente con "${tema}".
+
+Devuelve SOLO el JSON:
+{"encuentros": [3 x {"numero":int,"tipo_encuentro":"normal","enemigo":str,"vida_enemigo":int,"concepto":str,"pregunta":str,"codigo":str|null,"opciones":[{"texto":str,"calidad":0|1|2,"explicacion":str}x4]}]}`;
+}
