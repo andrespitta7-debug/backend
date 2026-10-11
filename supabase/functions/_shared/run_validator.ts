@@ -447,3 +447,218 @@ export function validarRunCompleta(
     },
   };
 }
+
+export type ResultadoValidacionLoteExtra =
+  | { valido: true; encuentros: EncuentroIa[] }
+  | { valido: false; codigo: string; detalle?: string };
+
+export function validarLoteEncuentrosExtra(
+  encuentros: unknown,
+  categoria: string,
+  ultimoNumero: number
+): ResultadoValidacionLoteExtra {
+  if (!Array.isArray(encuentros) || encuentros.length !== 3) {
+    return {
+      valido: false,
+      codigo: 'IA_ENCUENTROS_INVALIDOS',
+      detalle: `Se esperaban 3 encuentros, se recibieron ${Array.isArray(encuentros) ? encuentros.length : typeof encuentros}`,
+    };
+  }
+
+  for (let i = 0; i < 3; i++) {
+    const enc = encuentros[i];
+    const numeroEsperado = ultimoNumero + i + 1;
+
+    if (!enc || typeof enc !== 'object' || Array.isArray(enc)) {
+      return {
+        valido: false,
+        codigo: 'IA_ENCUENTROS_INVALIDOS',
+        detalle: `Encuentro ${i} no es un objeto válido`,
+      };
+    }
+
+    if (typeof enc.numero !== 'number' || !Number.isInteger(enc.numero) || enc.numero !== numeroEsperado) {
+      return {
+        valido: false,
+        codigo: 'IA_ENCUENTROS_INVALIDOS',
+        detalle: `Encuentro ${i}: número es ${enc.numero}, esperado ${numeroEsperado}`,
+      };
+    }
+
+    if (
+      typeof enc.tipo_encuentro !== 'string' ||
+      !['normal', 'jefe'].includes(enc.tipo_encuentro)
+    ) {
+      return {
+        valido: false,
+        codigo: 'IA_ENCUENTROS_INVALIDOS',
+        detalle: `Encuentro ${i}: tipo_encuentro inválido '${enc.tipo_encuentro}'`,
+      };
+    }
+
+    if (
+      typeof enc.enemigo !== 'string' ||
+      enc.enemigo.trim().length < 3 ||
+      enc.enemigo.trim().length > 40
+    ) {
+      return {
+        valido: false,
+        codigo: 'IA_ENCUENTROS_INVALIDOS',
+        detalle: `Encuentro ${i}: enemigo '${enc.enemigo}' longitud ${enc.enemigo?.trim?.()?.length} fuera de rango 3-40`,
+      };
+    }
+
+    if (
+      typeof enc.pregunta !== 'string' ||
+      enc.pregunta.trim().length < 10 ||
+      enc.pregunta.trim().length > 400
+    ) {
+      return {
+        valido: false,
+        codigo: 'IA_ENCUENTROS_INVALIDOS',
+        detalle: `Encuentro ${i}: pregunta longitud fuera de rango 10-400`,
+      };
+    }
+
+    if (enc.codigo !== null && typeof enc.codigo !== 'string') {
+      return {
+        valido: false,
+        codigo: 'IA_ENCUENTROS_INVALIDOS',
+        detalle: `Encuentro ${i}: codigo no es string ni null`,
+      };
+    }
+
+    if (typeof enc.codigo === 'string' && enc.codigo.length > 600) {
+      return {
+        valido: false,
+        codigo: 'IA_ENCUENTROS_INVALIDOS',
+        detalle: `Encuentro ${i}: codigo longitud > 600`,
+      };
+    }
+
+    if (categoria === 'libre' && enc.codigo !== null) {
+      return {
+        valido: false,
+        codigo: 'IA_ENCUENTROS_INVALIDOS',
+        detalle: `Encuentro ${i}: codigo debe ser null en categoría libre`,
+      };
+    }
+
+    if (REGEX_HIGIENE.test(enc.enemigo) || REGEX_HIGIENE.test(enc.pregunta)) {
+      return {
+        valido: false,
+        codigo: 'IA_ENCUENTROS_INVALIDOS',
+        detalle: `Encuentro ${i}: markdown o html detectado en enemigo o pregunta`,
+      };
+    }
+
+    if (!Array.isArray(enc.opciones) || enc.opciones.length !== 4) {
+      return {
+        valido: false,
+        codigo: 'IA_ENCUENTROS_INVALIDOS',
+        detalle: `Encuentro ${i}: se esperaban 4 opciones`,
+      };
+    }
+
+    let cantCalidad2 = 0;
+    let cantCalidad0 = 0;
+    const textosVistos = new Set<string>();
+
+    for (const op of enc.opciones) {
+      if (!op || typeof op !== 'object' || Array.isArray(op)) {
+        return {
+          valido: false,
+          codigo: 'IA_ENCUENTROS_INVALIDOS',
+          detalle: `Encuentro ${i}: opción no es un objeto válido`,
+        };
+      }
+
+      if (
+        typeof op.texto !== 'string' ||
+        op.texto.trim().length < 3 ||
+        op.texto.trim().length > 200
+      ) {
+        return {
+          valido: false,
+          codigo: 'IA_ENCUENTROS_INVALIDOS',
+          detalle: `Encuentro ${i}: texto opción longitud fuera de rango 3-200`,
+        };
+      }
+
+      if (
+        typeof op.calidad !== 'number' ||
+        !Number.isInteger(op.calidad) ||
+        ![0, 1, 2].includes(op.calidad)
+      ) {
+        return {
+          valido: false,
+          codigo: 'IA_ENCUENTROS_INVALIDOS',
+          detalle: `Encuentro ${i}: calidad opción inválida (${op.calidad})`,
+        };
+      }
+
+      if (
+        typeof op.explicacion !== 'string' ||
+        op.explicacion.trim().length < 10 ||
+        op.explicacion.trim().length > 300
+      ) {
+        return {
+          valido: false,
+          codigo: 'IA_ENCUENTROS_INVALIDOS',
+          detalle: `Encuentro ${i}: explicacion longitud fuera de rango 10-300`,
+        };
+      }
+
+      if (REGEX_HIGIENE.test(op.texto) || REGEX_HIGIENE.test(op.explicacion)) {
+        return {
+          valido: false,
+          codigo: 'IA_ENCUENTROS_INVALIDOS',
+          detalle: `Encuentro ${i}: markdown o html detectado en opciones`,
+        };
+      }
+
+      if (op.calidad === 2) cantCalidad2++;
+      if (op.calidad === 0) cantCalidad0++;
+
+      const textoNorm = normalizarTexto(op.texto);
+      if (textosVistos.has(textoNorm)) {
+        return {
+          valido: false,
+          codigo: 'IA_ENCUENTROS_INVALIDOS',
+          detalle: `Encuentro ${i}: textos de opciones repetidos`,
+        };
+      }
+      textosVistos.add(textoNorm);
+    }
+
+    if (cantCalidad2 !== 1 || cantCalidad0 < 1) {
+      return {
+        valido: false,
+        codigo: 'IA_ENCUENTROS_INVALIDOS',
+        detalle: `Encuentro ${i}: calidad 2 = ${cantCalidad2} (esp 1), calidad 0 = ${cantCalidad0} (esp >= 1)`,
+      };
+    }
+
+    // V9: Balance de longitud de opciones
+    const opcionCorrecta = enc.opciones.find((op: { calidad: number }) => op.calidad === 2);
+    if (opcionCorrecta) {
+      const longitudesOtras = enc.opciones
+        .filter((op: { calidad: number }) => op.calidad !== 2)
+        .map((op: { texto: string }) => op.texto.trim().length);
+      const promedioOtras =
+        longitudesOtras.reduce((a: number, b: number) => a + b, 0) /
+        longitudesOtras.length;
+      const longitudCorrecta = opcionCorrecta.texto.trim().length;
+
+      if (promedioOtras > 0 && longitudCorrecta > promedioOtras * 2) {
+        return {
+          valido: false,
+          codigo: 'IA_OPCIONES_DESBALANCEADAS',
+          detalle: `Encuentro ${i}: opción correcta (${longitudCorrecta}c) excede el doble del promedio (${promedioOtras.toFixed(1)}c)`,
+        };
+      }
+    }
+  }
+
+  return { valido: true, encuentros: encuentros as EncuentroIa[] };
+}
