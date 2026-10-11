@@ -81,44 +81,89 @@ Deno.serve(async (req: Request) => {
   // 5. Validar campos obligatorios
   const idQuestRaw = body.id_quest;
   if (typeof idQuestRaw !== 'string' || idQuestRaw.trim().length === 0) {
-    return jsonResponse(
-      {
-        ok: false,
-        codigo: 'INPUT_INVALIDO',
-        detalle: 'El campo id_quest es obligatorio y debe ser una cadena válida.',
-      },
-      400
-    );
+    return jsonResponse({
+      ok: false,
+      codigo: 'INPUT_INVALIDO',
+      detalle: 'El campo id_quest es obligatorio.',
+    }, 400);
   }
   const idQuest = idQuestRaw.trim();
 
   const estadoRaw = body.estado;
   if (estadoRaw !== 'ganada' && estadoRaw !== 'perdida') {
-    return jsonResponse(
-      {
-        ok: false,
-        codigo: 'INPUT_INVALIDO',
-        detalle: 'El campo estado debe ser "ganada" o "perdida".',
-      },
-      400
-    );
+    return jsonResponse({
+      ok: false,
+      codigo: 'INPUT_INVALIDO',
+      detalle: 'El campo estado debe ser "ganada" o "perdida".',
+    }, 400);
   }
   const estado = estadoRaw;
 
-  const xpRaw = body.xp_obtenida;
-  if (typeof xpRaw !== 'number' || !Number.isInteger(xpRaw) || xpRaw < 0) {
-    return jsonResponse(
-      {
-        ok: false,
-        codigo: 'INPUT_INVALIDO',
-        detalle: 'El campo xp_obtenida debe ser un entero mayor o igual a 0.',
-      },
-      400
-    );
+  const enemigosRaw = body.enemigos_derrotados;
+  if (typeof enemigosRaw !== 'number' || !Number.isInteger(enemigosRaw) || enemigosRaw < 0) {
+    return jsonResponse({
+      ok: false,
+      codigo: 'INPUT_INVALIDO',
+      detalle: 'enemigos_derrotados debe ser un entero >= 0.',
+    }, 400);
   }
-  const xpObtenida = xpRaw;
+  const enemigosDerrotados = enemigosRaw;
 
-  // 6. Construir objeto p_partida para la RPC
+  // 6. Consultar dificultad de la quest y total de encuentros
+  const { data: questData, error: questError } = await supabaseAdmin
+    .from('quest')
+    .select('dificultad')
+    .eq('id', idQuest)
+    .single();
+
+  if (questError || !questData) {
+    return jsonResponse({
+      ok: false,
+      codigo: 'QUEST_NO_ENCONTRADA',
+    }, 404);
+  }
+
+  const { count: totalEncuentros, error: countError } = await supabaseAdmin
+    .from('encuentro')
+    .select('*', { count: 'exact', head: true })
+    .eq('id_quest', idQuest);
+
+  if (countError || totalEncuentros === null) {
+    return jsonResponse({
+      ok: false,
+      codigo: 'ERROR_PERSISTENCIA',
+    }, 500);
+  }
+
+  // 7. Validar que enemigos_derrotados no exceda el total real
+  if (enemigosDerrotados > totalEncuentros) {
+    return jsonResponse({
+      ok: false,
+      codigo: 'INPUT_INVALIDO',
+      detalle: `enemigos_derrotados (${enemigosDerrotados}) excede el total de encuentros de la quest (${totalEncuentros}).`,
+    }, 400);
+  }
+
+  // 8. Calcular score y XP server-side
+  const multiplicadores: Record<string, number> = {
+    'facil': 1.0,
+    'medio': 1.5,
+    'dificil': 2.0,
+  };
+  const mult = multiplicadores[questData.dificultad] ?? 1.0;
+  const scoreCalculado = Math.floor(enemigosDerrotados * 100 * mult);
+  const xpCalculada = Math.max(10, Math.min(1000, Math.floor(scoreCalculado / 10)));
+
+  console.log('[finalizar-partida] Recalculo server-side:', {
+    userId,
+    idQuest,
+    dificultad: questData.dificultad,
+    enemigosDerrotados,
+    scoreCalculado,
+    xpCalculada,
+  });
+
+  // 9. Construir p_partida con valores CALCULADOS (no del cliente)
   const idPartida = typeof body.id_partida === 'string' && body.id_partida.trim().length > 0
     ? body.id_partida.trim()
     : crypto.randomUUID();
@@ -129,8 +174,8 @@ Deno.serve(async (req: Request) => {
     id_quest: idQuest,
     estado: estado,
     encuentro_actual: typeof body.encuentro_actual === 'number' ? Math.floor(body.encuentro_actual) : 0,
-    score: typeof body.score === 'number' ? Math.floor(body.score) : 0,
-    xp_obtenida: xpObtenida,
+    score: scoreCalculado,       // ← calculado por el servidor
+    xp_obtenida: xpCalculada,    // ← calculado por el servidor
     tiempo_segundos: typeof body.tiempo_segundos === 'number' ? Math.floor(body.tiempo_segundos) : 0,
     vida_jugador_actual: typeof body.vida_jugador_actual === 'number'
       ? Math.floor(body.vida_jugador_actual)
@@ -140,7 +185,7 @@ Deno.serve(async (req: Request) => {
       : null,
   };
 
-  // 7. Llamar a la función RPC finalizar_partida
+  // 10. Llamar a la función RPC finalizar_partida
   const { error: rpcError } = await supabaseAdmin.rpc('finalizar_partida', {
     p_partida: pPartida,
   });
@@ -162,6 +207,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // 8. Éxito
+  // 11. Éxito
   return jsonResponse({ ok: true }, 200);
 });

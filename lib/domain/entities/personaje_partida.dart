@@ -24,6 +24,7 @@ class Partida {
   int xpObtenida;
   int tiempoSegundos;
   int vidaJugador; // vida actual del jugador durante la partida
+  int enemigosDerrotados;
 
   Partida({
     required this.idPartida,
@@ -35,6 +36,7 @@ class Partida {
     this.xpObtenida = 0,
     this.tiempoSegundos = 0,
     this.vidaJugador = 100,
+    this.enemigosDerrotados = 0,
   });
 }
 
