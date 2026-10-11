@@ -21,6 +21,19 @@ class GenerarQuestController extends ChangeNotifier {
       codigoError == 'IA_NO_DISPONIBLE' ||
       codigoError == 'ERROR_PERSISTENCIA';
 
+  bool get puedeUsarFallback =>
+      codigoError != null &&
+      codigoError!.startsWith('IA_');
+
+  String questSemillaAleatoria() {
+    const semillas = [
+      '00000000-0000-0000-0000-000000000001', // Programación Básica
+      '00000000-0000-0000-0000-000000000002', // Matemáticas Básicas
+      '00000000-0000-0000-0000-000000000003', // Historia Universal
+    ];
+    return semillas[DateTime.now().millisecond % semillas.length];
+  }
+
   Future<void> generar(String tema) async {
     estado = GenerarQuestEstado.generando;
     questGenerada = null;

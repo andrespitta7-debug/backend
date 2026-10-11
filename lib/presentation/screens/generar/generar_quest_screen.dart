@@ -58,16 +58,37 @@ class _GenerarQuestScreenState extends State<GenerarQuestScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(controller.mensajeError!),
-          duration: const Duration(seconds: 5),
-          action: controller.esErrorReintentable
-              ? SnackBarAction(
-                  label: 'Reintentar',
-                  onPressed: () => _generarQuest(),
-                )
-              : null,
+          duration: const Duration(seconds: 8),
+          action: SnackBarAction(
+            label: controller.puedeUsarFallback ? 'Respaldo' : 'Reintentar',
+            onPressed: () {
+              if (controller.puedeUsarFallback) {
+                _jugarQuestRespaldo();
+              } else {
+                _generarQuest();
+              }
+            },
+          ),
         ),
       );
     }
+  }
+
+  void _jugarQuestRespaldo() {
+    final controller = context.read<GenerarQuestController>();
+    final idSemilla = controller.questSemillaAleatoria();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CombateScreen(
+          idQuest: idSemilla,
+          idUsuario: widget.idUsuario,
+          categoriaQuest: 'libre',
+          questCompleta: null, // No hay pool narrativo en el fallback
+        ),
+      ),
+    );
   }
 
   @override
