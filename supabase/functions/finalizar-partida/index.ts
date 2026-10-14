@@ -151,6 +151,12 @@ Deno.serve(async (req: Request) => {
   const maxRachaPermitida = (totalEncuentros ?? 1) * 5;
   const rachaMaxima = Math.min(rachaRaw, maxRachaPermitida);
 
+  const rondasRaw = typeof body.rondas_temerarias === 'number' && Number.isInteger(body.rondas_temerarias) && body.rondas_temerarias >= 0
+    ? body.rondas_temerarias
+    : 0;
+  const maxRondasPosibles = Math.max(1, Math.floor((totalEncuentros ?? 1) / 3));
+  const rondasTemerarias = Math.min(rondasRaw, maxRondasPosibles);
+
   const multiplicadores: Record<string, number> = {
     'facil': 1.0,
     'medio': 1.5,
@@ -160,7 +166,8 @@ Deno.serve(async (req: Request) => {
   const puntosEnemigos = Math.floor(enemigosDerrotados * 100 * mult);
   const bonusRacha = rachaMaxima >= 7 ? 150 : (rachaMaxima >= 5 ? 50 : 0);
   const bonusVictoria = estado === 'ganada' ? Math.floor(150 * mult) : 0;
-  const scoreCalculado = puntosEnemigos + bonusRacha + bonusVictoria;
+  const bonusTemerario = Math.floor(rondasTemerarias * 200 * mult);
+  const scoreCalculado = puntosEnemigos + bonusRacha + bonusVictoria + bonusTemerario;
   const xpCalculada = scoreCalculado === 0 ? 0 : Math.max(5, Math.min(1000, Math.floor(scoreCalculado / 10)));
 
   console.log('[finalizar-partida] Recalculo server-side:', {
@@ -169,9 +176,11 @@ Deno.serve(async (req: Request) => {
     dificultad: questData.dificultad,
     enemigosDerrotados,
     rachaMaxima,
+    rondasTemerarias,
     puntosEnemigos,
     bonusRacha,
     bonusVictoria,
+    bonusTemerario,
     scoreCalculado,
     xpCalculada,
   });
@@ -228,6 +237,8 @@ Deno.serve(async (req: Request) => {
       puntos_enemigos: puntosEnemigos,
       bonus_racha: bonusRacha,
       bonus_victoria: bonusVictoria,
+      bonus_temerario: bonusTemerario,
+      rondas_temerarias: rondasTemerarias,
       xp_obtenida: xpCalculada,
       enemigos_derrotados: enemigosDerrotados,
       racha_maxima: rachaMaxima,
