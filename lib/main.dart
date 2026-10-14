@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
@@ -48,7 +49,9 @@ Future<void> main() async {
 
   // --- Composición de dependencias (único lugar que elige SQLite) ---
   final dbHelper = DatabaseHelper.instance;
-  await dbHelper.insertarDatosDePrueba();
+  if (!kIsWeb) {
+    await dbHelper.insertarDatosDePrueba();
+  }
 
   final preferences = await SharedPreferences.getInstance();
   final sesionRepository = SharedPreferencesSesionRepository(preferences);
