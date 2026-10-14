@@ -1302,13 +1302,29 @@ class _ConsolaNarrativaState extends State<_ConsolaNarrativa> {
               child: ListView.builder(
                 itemCount: widget.historial.length,
                 itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
+                  final estilo = _EstiloLineaNarrativa.parse(widget.historial[index]);
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: estilo.colorFondo,
+                      borderRadius: const BorderRadius.only(
+                        topRight: Radius.circular(4),
+                        bottomRight: Radius.circular(4),
+                      ),
+                      border: Border(
+                        left: BorderSide(
+                          color: estilo.colorBorde,
+                          width: 3,
+                        ),
+                      ),
+                    ),
                     child: Text(
-                      '> ${widget.historial[index]}',
+                      estilo.texto,
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppTheme.azulTexto.withValues(alpha: 0.85),
+                        color: estilo.colorTexto,
+                        fontStyle: estilo.fontStyle,
                         height: 1.4,
                       ),
                     ),
@@ -1320,6 +1336,72 @@ class _ConsolaNarrativaState extends State<_ConsolaNarrativa> {
         ],
       ),
     );
+  }
+}
+
+class _EstiloLineaNarrativa {
+  final String texto;
+  final Color colorTexto;
+  final Color colorBorde;
+  final Color colorFondo;
+  final FontStyle fontStyle;
+
+  const _EstiloLineaNarrativa({
+    required this.texto,
+    required this.colorTexto,
+    required this.colorBorde,
+    required this.colorFondo,
+    this.fontStyle = FontStyle.normal,
+  });
+
+  factory _EstiloLineaNarrativa.parse(String linea) {
+    if (linea.startsWith('[CRITICO]')) {
+      return _EstiloLineaNarrativa(
+        texto: linea.substring('[CRITICO]'.length).trimLeft(),
+        colorTexto: AppTheme.doradoCritico,
+        colorBorde: AppTheme.doradoCritico,
+        colorFondo: AppTheme.doradoCritico.withValues(alpha: 0.08),
+      );
+    } else if (linea.startsWith('[RACHA]')) {
+      return _EstiloLineaNarrativa(
+        texto: linea.substring('[RACHA]'.length).trimLeft(),
+        colorTexto: AppTheme.doradoCritico,
+        colorBorde: AppTheme.doradoCritico,
+        colorFondo: AppTheme.doradoCritico.withValues(alpha: 0.08),
+      );
+    } else if (linea.startsWith('[ACIERTO]')) {
+      return _EstiloLineaNarrativa(
+        texto: linea.substring('[ACIERTO]'.length).trimLeft(),
+        colorTexto: AppTheme.azulTexto,
+        colorBorde: AppTheme.azulTexto,
+        colorFondo: AppTheme.azulTexto.withValues(alpha: 0.08),
+      );
+    } else if (linea.startsWith('[CONTRAATAQUE]')) {
+      return _EstiloLineaNarrativa(
+        texto: linea.substring('[CONTRAATAQUE]'.length).trimLeft(),
+        colorTexto: AppTheme.rojoDanio,
+        colorBorde: AppTheme.rojoDanio,
+        colorFondo: AppTheme.rojoDanio.withValues(alpha: 0.10),
+      );
+    } else if (linea.startsWith('[COMODIN]')) {
+      return _EstiloLineaNarrativa(
+        texto: linea.substring('[COMODIN]'.length).trimLeft(),
+        colorTexto: AppTheme.verdeVida,
+        colorBorde: AppTheme.verdeVida,
+        colorFondo: AppTheme.verdeVida.withValues(alpha: 0.08),
+      );
+    } else {
+      final texto = linea.startsWith('[HISTORIA]')
+          ? linea.substring('[HISTORIA]'.length).trimLeft()
+          : linea;
+      return _EstiloLineaNarrativa(
+        texto: texto,
+        colorTexto: Colors.white70,
+        colorBorde: Colors.white24,
+        colorFondo: Colors.white.withValues(alpha: 0.03),
+        fontStyle: FontStyle.italic,
+      );
+    }
   }
 }
 

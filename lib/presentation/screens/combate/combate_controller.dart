@@ -152,6 +152,7 @@ class CombateController extends ChangeNotifier {
       dificultad: enemigo.dificultad,
       tipoEncuentro: enemigo.tipoEncuentro,
       vidaEnemigo: enemigo.vidaEnemigo,
+      enemigo: enemigo.enemigo,
       opciones: pregunta.opciones,
     );
   }
@@ -183,6 +184,10 @@ class CombateController extends ChangeNotifier {
     }
   }
 
+  void _agregarNarrativa(String mensaje) {
+    _historialNarrativo.insert(0, mensaje);
+  }
+
   Future<void> cargarQuest(
     String idQuest,
     String idUsuario, {
@@ -204,6 +209,7 @@ class CombateController extends ChangeNotifier {
     _enemigosDerrotados = 0;
     _ronda = 1;
     _rachaActual = 0;
+    _historialNarrativo.clear();
     turnoEnProceso = false;
 
     _wildcards.clear();
@@ -276,6 +282,7 @@ class CombateController extends ChangeNotifier {
     );
     resultadoUltimoTurno = resultado;
 
+    final rachaPrevia = _rachaActual;
     final esAciertoOCritico = resultado.resultado == ResultadoTurno.acierto ||
         resultado.resultado == ResultadoTurno.critico;
 
@@ -310,6 +317,31 @@ class CombateController extends ChangeNotifier {
 
     if (aplicaRoboDeVida && esAciertoOCritico) {
       vidaJugador = (vidaJugador + 10).clamp(0, 100);
+    }
+
+    final nombreEnemigo = (encuentroActual?.enemigo?.isNotEmpty == true) ? encuentroActual!.enemigo! : 'El enemigo';
+
+    if (resultado.resultado == ResultadoTurno.critico) {
+      _agregarNarrativa('[CRITICO] 💥 ¡Golpe crítico a $nombreEnemigo! Le causas -$danioAlEnemigoFinal HP.');
+    } else if (resultado.resultado == ResultadoTurno.acierto) {
+      _agregarNarrativa('[ACIERTO] ⚔️ Atacas a $nombreEnemigo y le causas -$danioAlEnemigoFinal HP.');
+    }
+
+    if (aplicaRoboDeVida && esAciertoOCritico) {
+      _agregarNarrativa('[COMODIN] 💚 ¡Poción Vampirica activada! Recuperas +10 HP (Vida: $vidaJugador/100).');
+    }
+
+    if (_rachaActual == 5) {
+      _agregarNarrativa('[RACHA] 🔥 ¡Racha Imparable (x5)! Daño x1.5 y +50 pts de bonus.');
+    } else if (_rachaActual == 7) {
+      _agregarNarrativa('[RACHA] 🔥 ¡RACHA LEGENDARIA (x7)! Daño x1.75 y +100 pts de bonus.');
+    }
+
+    if (resultado.resultado == ResultadoTurno.fallo) {
+      _agregarNarrativa('[CONTRAATAQUE] 🩸 Fallaste. $nombreEnemigo contraataca con furia y te quita -${resultado.danoAlJugador} HP.');
+      if (rachaPrevia >= 3) {
+        _agregarNarrativa('[CONTRAATAQUE] 💔 ¡Perdiste tu racha de $rachaPrevia aciertos!');
+      }
     }
 
     switch (resultado.resultado) {
@@ -500,15 +532,19 @@ class CombateController extends ChangeNotifier {
     switch (tipo) {
       case TipoWildcard.cincuentaCincuenta:
         _aplicarCincuentaCincuenta();
+        _agregarNarrativa('[COMODIN] 🎯 Usaste 50/50: dos opciones falsas fueron descartadas.');
         break;
       case TipoWildcard.roboDeVida:
         _roboDeVidaActivo = true;
+        _agregarNarrativa('[COMODIN] 🧪 Preparaste Poción Vampirica: tu próximo acierto curará +10 HP.');
         break;
       case TipoWildcard.golpeDoble:
         _golpeDobleActivo = true;
+        _agregarNarrativa('[COMODIN] ⚡ Activaste Golpe Doble: tu próximo ataque hará el doble de daño.');
         break;
       case TipoWildcard.pista:
         _pistaActiva = _generarPistaLocal();
+        _agregarNarrativa('[COMODIN] 💡 Consultaste al Oráculo para obtener una pista.');
         break;
     }
 

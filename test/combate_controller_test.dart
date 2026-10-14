@@ -621,6 +621,71 @@ void main() {
       expect(controller.rachaActual, equals(5));
       expect(controller.vidaEnemigo, equals(vidaAntesGolpeDoble - 36));
     });
+
+    test('consola narrativa registra eventos etiquetados de ataque, contraataque y comodines', () async {
+      final opcionCritica = OpcionEncuentro(
+        idOpcion: 'op-critica',
+        idEncuentro: 'enc-log',
+        letra: 'A',
+        texto: 'Opción crítica',
+        calidad: 2,
+      );
+      final opcionFallo = OpcionEncuentro(
+        idOpcion: 'op-fallo',
+        idEncuentro: 'enc-log',
+        letra: 'B',
+        texto: 'Opción fallo',
+        calidad: 0,
+      );
+      final encuentroLog = Encuentro(
+        idEncuentro: 'enc-log',
+        idQuest: 'q-log',
+        numero: 1,
+        pregunta: 'Pregunta log',
+        dificultad: 'facil',
+        tipoEncuentro: 'normal',
+        vidaEnemigo: 500,
+        enemigo: 'Gólem de Código',
+        opciones: [opcionCritica, opcionFallo],
+      );
+
+      final repoQuest = FakeQuestRepository([encuentroLog]);
+      final repoPartida = FakePartidaRepository();
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(repoPartida),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
+        duracionPausaTurno: Duration.zero,
+      );
+
+      await controller.cargarQuest('q-log', 'u-1');
+
+      // 1. Usar comodín
+      await controller.usarWildcard(TipoWildcard.roboDeVida);
+      expect(
+        controller.historialNarrativo.any((l) => l.contains('[COMODIN]') && l.contains('Poción Vampirica')),
+        isTrue,
+      );
+
+      // 2. Acertar (crítico) con comodín activo
+      await controller.elegirOpcion(opcionCritica);
+      expect(
+        controller.historialNarrativo.any((l) => l.contains('[CRITICO]') && l.contains('Gólem de Código')),
+        isTrue,
+      );
+      expect(
+        controller.historialNarrativo.any((l) => l.contains('[COMODIN]') && l.contains('Poción Vampirica activada')),
+        isTrue,
+      );
+
+      // 3. Fallar
+      await controller.elegirOpcion(opcionFallo);
+      expect(
+        controller.historialNarrativo.any((l) => l.contains('[CONTRAATAQUE]') && l.contains('Gólem de Código contraataca')),
+        isTrue,
+      );
+    });
   });
 }
 
