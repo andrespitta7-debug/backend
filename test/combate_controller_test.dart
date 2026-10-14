@@ -499,7 +499,7 @@ void main() {
       expect(controller.partida.score, equals(0));
       expect(repoPartida.ultimaPartidaGuardada!.enemigosDerrotados, equals(0));
 
-      // Caso 2: Derrotar al enemigo asigna enemigosDerrotados = 1 y score = 0
+      // Caso 2: Derrotar al enemigo asigna enemigosDerrotados = 1, rachaMaxima y calcula score/XP coherente
       final controller2 = CombateController(
         repoQuest,
         ResponderEncuentroUseCase(),
@@ -511,8 +511,17 @@ void main() {
       await controller2.elegirOpcion(opcionCritica);
       await controller2.elegirOpcion(opcionCritica);
       expect(controller2.partida.enemigosDerrotados, equals(1));
-      expect(controller2.partida.score, equals(0));
+      expect(controller2.partida.rachaMaxima, equals(2));
+      expect(controller2.rachaMaxima, equals(2));
+      expect(controller2.puntosPorEnemigos, equals(100));
+      expect(controller2.bonusPorRacha, equals(0));
+      expect(controller2.bonusPorVictoria, equals(150));
+      expect(controller2.partida.score, equals(250));
+      expect(controller2.partida.xpObtenida, equals(25));
+      expect(controller2.scoreFinalMostrado, equals(250));
+      expect(controller2.xpFinalMostrada, equals(25));
       expect(repoPartida.ultimaPartidaGuardada!.enemigosDerrotados, equals(1));
+      expect(repoPartida.ultimaPartidaGuardada!.rachaMaxima, equals(2));
     });
 
     test('sistema de racha: incrementa con aciertos/críticos, aplica multiplicador, bonos de score, convive con golpe doble y resetea con fallo', () async {

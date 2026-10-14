@@ -48,6 +48,7 @@ class HttpPartidaRepository implements PartidaRepository {
       'estado': partida.estado,
       'encuentro_actual': partida.encuentroActual,
       'enemigos_derrotados': partida.enemigosDerrotados,
+      'racha_maxima': partida.rachaMaxima,
       'tiempo_segundos': partida.tiempoSegundos,
       'vida_jugador_actual': partida.vidaJugador,
       'vida_enemigo_actual': null,
@@ -70,6 +71,17 @@ class HttpPartidaRepository implements PartidaRepository {
 
     // 1. Éxito: 200 OK o 201 Created
     if (statusCode == 200 || statusCode == 201) {
+      try {
+        final Map<String, dynamic> data =
+            jsonDecode(response.body) as Map<String, dynamic>;
+        if (data['resumen'] is Map) {
+          final resumen = data['resumen'] as Map<String, dynamic>;
+          partida.score =
+              (resumen['score_total'] as num?)?.toInt() ?? partida.score;
+          partida.xpObtenida =
+              (resumen['xp_obtenida'] as num?)?.toInt() ?? partida.xpObtenida;
+        }
+      } catch (_) {}
       return;
     }
 

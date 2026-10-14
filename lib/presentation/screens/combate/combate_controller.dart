@@ -50,11 +50,20 @@ class CombateController extends ChangeNotifier {
   int _enemigosDerrotados = 0;
   int _ronda = 1;
   int _rachaActual = 0;
+  int _rachaMaxima = 0;
 
   int get score => _score;
   int get enemigosDerrotados => _enemigosDerrotados;
   int get ronda => _ronda;
   int get rachaActual => _rachaActual;
+  int get rachaMaxima => _rachaMaxima;
+
+  bool get ganoCombate => jugadorGano;
+  int get puntosPorEnemigos => _enemigosDerrotados * 100;
+  int get bonusPorRacha => _rachaMaxima >= 7 ? 150 : (_rachaMaxima >= 5 ? 50 : 0);
+  int get bonusPorVictoria => ganoCombate ? 150 : 0;
+  int get scoreFinalMostrado => _partida.score > 0 ? _partida.score : _score;
+  int get xpFinalMostrada => _partida.xpObtenida;
 
   double get multiplicadorRacha {
     if (_rachaActual >= 7) return 1.75;
@@ -209,6 +218,7 @@ class CombateController extends ChangeNotifier {
     _enemigosDerrotados = 0;
     _ronda = 1;
     _rachaActual = 0;
+    _rachaMaxima = 0;
     _historialNarrativo.clear();
     turnoEnProceso = false;
 
@@ -288,6 +298,7 @@ class CombateController extends ChangeNotifier {
 
     if (esAciertoOCritico) {
       _rachaActual += 1;
+      if (_rachaActual > _rachaMaxima) _rachaMaxima = _rachaActual;
 
       // Bonus de score por hitos de racha
       if (_rachaActual == 5) {
@@ -515,6 +526,7 @@ class CombateController extends ChangeNotifier {
     notifyListeners();
     _partida.encuentroActual = _indiceActual;
     _partida.enemigosDerrotados = _enemigosDerrotados;
+    _partida.rachaMaxima = _rachaMaxima;
     // El servidor calculará el score y la XP. Aquí los ponemos en 0
     // solo como valores por defecto (el servidor los ignorará).
     _partida.score = 0;

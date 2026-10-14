@@ -21,8 +21,21 @@ class FinalizarPartidaUseCase {
     required bool gano,
   }) async {
     partida.estado = gano ? 'ganada' : 'perdida';
-    if (partida.xpObtenida <= 0) {
-      partida.xpObtenida = gano ? xpPorVictoria : xpPorDerrota;
+    if (partida.score <= 0 && partida.xpObtenida <= 0) {
+      if (partida.enemigosDerrotados == 0 && partida.rachaMaxima == 0) {
+        partida.score = gano ? 150 : 0;
+        partida.xpObtenida = gano ? xpPorVictoria : xpPorDerrota;
+      } else {
+        final puntosEnemigos = partida.enemigosDerrotados * 100;
+        final bonusRacha = partida.rachaMaxima >= 7
+            ? 150
+            : (partida.rachaMaxima >= 5 ? 50 : 0);
+        final bonusVictoria = gano ? 150 : 0;
+        partida.score = puntosEnemigos + bonusRacha + bonusVictoria;
+        partida.xpObtenida = partida.score > 0
+            ? (partida.score ~/ 10).clamp(5, 1000)
+            : (gano ? xpPorVictoria : 0);
+      }
     }
 
     // SIEMPRE llamar al repo. En modo local guarda en SQLite. En modo

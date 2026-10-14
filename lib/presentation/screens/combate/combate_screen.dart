@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 
 import '../../../domain/entities/encuentro.dart';
 import '../../../domain/entities/opcion_encuentro.dart';
-import '../../../domain/usecases/finalizar_partida_usecase.dart';
 import '../../../domain/usecases/responder_encuentro_usecase.dart';
 import '../../../domain/entities/quest_completa.dart';
 import '../../../domain/entities/wildcard.dart';
@@ -453,9 +452,7 @@ class _CombateContenido extends StatelessWidget {
             _RondaSuperada(onContinuar: onContinuar)
           else if (controller.combateTerminado)
             _FinCombate(
-              gano: controller.jugadorGano,
-              guardando: controller.guardandoResultado,
-              xpObtenida: controller.partida.xpObtenida,
+              controller: controller,
               onVolverAJugar: onVolverAJugar,
               onVerProgreso: onVerProgreso,
             )
@@ -994,26 +991,21 @@ class _RondaSuperada extends StatelessWidget {
 }
 
 class _FinCombate extends StatelessWidget {
-  final bool gano;
-  final bool guardando;
-  final int? xpObtenida;
+  final CombateController controller;
   final VoidCallback onVolverAJugar;
   final VoidCallback onVerProgreso;
 
   const _FinCombate({
-    required this.gano,
-    required this.guardando,
-    this.xpObtenida,
+    required this.controller,
     required this.onVolverAJugar,
     required this.onVerProgreso,
   });
 
   @override
   Widget build(BuildContext context) {
-    final xp = xpObtenida ??
-        (gano
-            ? FinalizarPartidaUseCase.xpPorVictoria
-            : FinalizarPartidaUseCase.xpPorDerrota);
+    final gano = controller.jugadorGano;
+    final guardando = controller.guardandoResultado;
+
     return Column(
       children: [
         Icon(
@@ -1027,8 +1019,8 @@ class _FinCombate extends StatelessWidget {
           style: Theme.of(context).textTheme.headlineSmall,
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 8),
-        Text('XP ganada: $xp', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 16),
+        _ResumenPartidaCard(controller: controller),
         const SizedBox(height: 12),
         Text(
           guardando ? 'Guardando progreso...' : 'Progreso guardado',
@@ -1046,6 +1038,137 @@ class _FinCombate extends StatelessWidget {
             child: const Text('Mi progreso'),
           ),
         ],
+      ],
+    );
+  }
+}
+
+class _ResumenPartidaCard extends StatelessWidget {
+  final CombateController controller;
+
+  const _ResumenPartidaCard({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.superficieNoche,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.superficieElevada, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Center(
+            child: Text(
+              'RESUMEN DE LA RUN',
+              style: TextStyle(
+                fontFamily: 'PressStart2P',
+                fontSize: 11,
+                color: AppTheme.azulTexto,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          _FilaResumen(
+            etiqueta: '⚔️ Enemigos derrotados (${controller.enemigosDerrotados})',
+            valor: '+${controller.puntosPorEnemigos} pts',
+          ),
+          const SizedBox(height: 8),
+          _FilaResumen(
+            etiqueta: '🔥 Racha máxima (x${controller.rachaMaxima})',
+            valor: '+${controller.bonusPorRacha} pts',
+          ),
+          if (controller.ganoCombate) ...[
+            const SizedBox(height: 8),
+            _FilaResumen(
+              etiqueta: '🏆 Bonus de Victoria',
+              valor: '+${controller.bonusPorVictoria} pts',
+            ),
+          ],
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Divider(color: Colors.white24, height: 1),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '⭐ SCORE TOTAL:',
+                style: TextStyle(
+                  fontFamily: 'PressStart2P',
+                  fontSize: 10,
+                  color: AppTheme.doradoCritico,
+                ),
+              ),
+              Text(
+                '${controller.scoreFinalMostrado} pts',
+                style: const TextStyle(
+                  fontFamily: 'PressStart2P',
+                  fontSize: 10,
+                  color: AppTheme.doradoCritico,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '✨ XP GANADA:',
+                style: TextStyle(
+                  fontFamily: 'PressStart2P',
+                  fontSize: 10,
+                  color: AppTheme.verdeVida,
+                ),
+              ),
+              Text(
+                '+${controller.xpFinalMostrada} XP',
+                style: const TextStyle(
+                  fontFamily: 'PressStart2P',
+                  fontSize: 10,
+                  color: AppTheme.verdeVida,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilaResumen extends StatelessWidget {
+  final String etiqueta;
+  final String valor;
+
+  const _FilaResumen({required this.etiqueta, required this.valor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            etiqueta,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.white70,
+            ),
+          ),
+        ),
+        Text(
+          valor,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
       ],
     );
   }

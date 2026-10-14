@@ -25,6 +25,7 @@ class Partida {
   int tiempoSegundos;
   int vidaJugador; // vida actual del jugador durante la partida
   int enemigosDerrotados;
+  int rachaMaxima;
 
   Partida({
     required this.idPartida,
@@ -37,6 +38,7 @@ class Partida {
     this.tiempoSegundos = 0,
     this.vidaJugador = 100,
     this.enemigosDerrotados = 0,
+    this.rachaMaxima = 0,
   });
 }
 

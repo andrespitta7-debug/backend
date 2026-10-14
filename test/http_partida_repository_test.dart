@@ -49,6 +49,7 @@ void main() {
     xpObtenida: 50,
     tiempoSegundos: 45,
     vidaJugador: 80,
+    enemigosDerrotados: 3,
   );
 
   group('HttpPartidaRepository', () {
@@ -71,8 +72,10 @@ void main() {
         expect(body['id_quest'], equals('00000000-0000-0000-0000-000000000001'));
         expect(body['estado'], equals('ganada'));
         expect(body['encuentro_actual'], equals(2));
-        expect(body['score'], equals(150));
-        expect(body['xp_obtenida'], equals(50));
+        expect(body['enemigos_derrotados'], equals(3));
+        expect(body['racha_maxima'], equals(0));
+        expect(body.containsKey('score'), isFalse);
+        expect(body.containsKey('xp_obtenida'), isFalse);
         expect(body['tiempo_segundos'], equals(45));
         expect(body['vida_jugador_actual'], equals(80));
         expect(body['vida_enemigo_actual'], isNull);
@@ -91,6 +94,46 @@ void main() {
         repo.guardarPartida(partidaEjemplo),
         completes,
       );
+    });
+
+    test('guardarPartida exitoso con resumen actualiza score y xpObtenida en memoria', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'ok': true,
+            'resumen': {
+              'score_total': 450,
+              'puntos_enemigos': 300,
+              'bonus_racha': 50,
+              'bonus_victoria': 100,
+              'xp_obtenida': 45,
+              'enemigos_derrotados': 3,
+              'racha_maxima': 5,
+              'dificultad': 'facil',
+            },
+          }),
+          200,
+        );
+      });
+
+      final repo = HttpPartidaRepository(
+        baseUrl: baseUrl,
+        anonKey: anonKey,
+        tokenRepository: fakeTokenRepo,
+        httpClient: mockClient,
+      );
+
+      final p = Partida(
+        idPartida: 'partida-test',
+        idUsuario: 'user-test',
+        idQuest: 'quest-test',
+        rachaMaxima: 5,
+        enemigosDerrotados: 3,
+      );
+
+      await repo.guardarPartida(p);
+      expect(p.score, equals(450));
+      expect(p.xpObtenida, equals(45));
     });
 
     test('guardarPartida sin token en TokenRepository lanza ApiException 401', () async {

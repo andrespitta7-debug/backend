@@ -207,6 +207,44 @@ void main() {
       );
       expect(controller.codigoError, 'IA_JSON_INVALIDO');
       expect(controller.esErrorReintentable, isFalse);
+      expect(controller.puedeUsarFallback, isTrue);
+      controller.dispose();
+    });
+
+    test('puedeUsarFallback es true con IA_ y false sin IA_', () async {
+      final repo = FakeQuestRepository();
+      final controller = GenerarQuestController(
+        GenerarQuestUseCase(
+          _ThrowingQuestGeneratorRepository(
+            const ApiException('Error', statusCode: 500, codigo: 'ERROR_PERSISTENCIA'),
+          ),
+          repo,
+        ),
+      );
+
+      await controller.generar('tema válido');
+      expect(controller.puedeUsarFallback, isFalse);
+
+      controller.dispose();
+    });
+
+    test('questSemillaAleatoria devuelve uno de los 3 UUIDs de semilla válidos', () {
+      final repo = FakeQuestRepository();
+      final controller = GenerarQuestController(
+        GenerarQuestUseCase(FakeQuestGeneratorRepository(crearQuest(titulo: 'T')), repo),
+      );
+
+      const validas = {
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000002',
+        '00000000-0000-0000-0000-000000000003',
+      };
+
+      for (var i = 0; i < 20; i++) {
+        final semilla = controller.questSemillaAleatoria();
+        expect(validas.contains(semilla), isTrue);
+      }
+
       controller.dispose();
     });
   });
