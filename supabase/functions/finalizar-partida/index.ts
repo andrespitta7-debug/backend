@@ -144,21 +144,34 @@ Deno.serve(async (req: Request) => {
     }, 400);
   }
 
-  // 8. Calcular score y XP server-side
+  // 8. Calcular score y XP server-side con desglose
+  const rachaRaw = typeof body.racha_maxima === 'number' && Number.isInteger(body.racha_maxima) && body.racha_maxima >= 0
+    ? body.racha_maxima
+    : 0;
+  const maxRachaPermitida = (totalEncuentros ?? 1) * 5;
+  const rachaMaxima = Math.min(rachaRaw, maxRachaPermitida);
+
   const multiplicadores: Record<string, number> = {
     'facil': 1.0,
     'medio': 1.5,
     'dificil': 2.0,
   };
   const mult = multiplicadores[questData.dificultad] ?? 1.0;
-  const scoreCalculado = Math.floor(enemigosDerrotados * 100 * mult);
-  const xpCalculada = Math.max(10, Math.min(1000, Math.floor(scoreCalculado / 10)));
+  const puntosEnemigos = Math.floor(enemigosDerrotados * 100 * mult);
+  const bonusRacha = rachaMaxima >= 7 ? 150 : (rachaMaxima >= 5 ? 50 : 0);
+  const bonusVictoria = estado === 'ganada' ? Math.floor(150 * mult) : 0;
+  const scoreCalculado = puntosEnemigos + bonusRacha + bonusVictoria;
+  const xpCalculada = scoreCalculado === 0 ? 0 : Math.max(5, Math.min(1000, Math.floor(scoreCalculado / 10)));
 
   console.log('[finalizar-partida] Recalculo server-side:', {
     userId,
     idQuest,
     dificultad: questData.dificultad,
     enemigosDerrotados,
+    rachaMaxima,
+    puntosEnemigos,
+    bonusRacha,
+    bonusVictoria,
     scoreCalculado,
     xpCalculada,
   });
@@ -207,6 +220,18 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // 11. Éxito
-  return jsonResponse({ ok: true }, 200);
+  // 11. Éxito con resumen de la partida
+  return jsonResponse({
+    ok: true,
+    resumen: {
+      score_total: scoreCalculado,
+      puntos_enemigos: puntosEnemigos,
+      bonus_racha: bonusRacha,
+      bonus_victoria: bonusVictoria,
+      xp_obtenida: xpCalculada,
+      enemigos_derrotados: enemigosDerrotados,
+      racha_maxima: rachaMaxima,
+      dificultad: questData.dificultad,
+    },
+  }, 200);
 });
