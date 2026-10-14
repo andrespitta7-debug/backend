@@ -472,15 +472,22 @@ class _CombateContenido extends StatelessWidget {
               onContinuar: onDismissNarrativa,
             )
           else if (controller.encuentroSuperado)
-            _RondaSuperada(
-              rondaActual: controller.ronda,
-              vidaActual: controller.vidaJugador,
-              onDescansoSeguro: () =>
-                  controller.continuarSiguienteRonda(temerario: false),
-              onPactoTemerario: () =>
-                  controller.continuarSiguienteRonda(temerario: true),
-              onRetirarseConBotin: () => controller.retirarse(),
-            )
+            if (controller.eventoActivo != null && !controller.esFinDeRonda)
+              _EventoDecisionCard(
+                evento: controller.eventoActivo!,
+                vidaActual: controller.vidaJugador,
+                onSeleccionar: controller.resolverEventoDecision,
+              )
+            else
+              _RondaSuperada(
+                rondaActual: controller.ronda,
+                vidaActual: controller.vidaJugador,
+                onDescansoSeguro: () =>
+                    controller.continuarSiguienteRonda(temerario: false),
+                onPactoTemerario: () =>
+                    controller.continuarSiguienteRonda(temerario: true),
+                onRetirarseConBotin: () => controller.retirarse(),
+              )
           else if (controller.combateTerminado)
             _FinCombate(
               controller: controller,
@@ -1101,6 +1108,91 @@ class _RondaSuperada extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EventoDecisionCard extends StatelessWidget {
+  final EventoDecision evento;
+  final int vidaActual;
+  final void Function(String) onSeleccionar;
+
+  const _EventoDecisionCard({
+    required this.evento,
+    required this.vidaActual,
+    required this.onSeleccionar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.superficieNoche,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.azulTexto, width: 2),
+      ),
+      child: Column(
+        children: [
+          Text(
+            evento.iconoEmoji,
+            style: const TextStyle(fontSize: 36),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            evento.titulo,
+            style: const TextStyle(
+              fontFamily: 'PressStart2P',
+              fontSize: 11,
+              color: AppTheme.azulTexto,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Vida actual: $vidaActual/100 HP',
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.white70,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            evento.descripcion,
+            style: const TextStyle(
+              fontStyle: FontStyle.italic,
+              fontSize: 12,
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          for (final opcion in evento.opciones) ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.superficieElevada,
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: AppTheme.azulTexto),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                ),
+                onPressed: () => onSeleccionar(opcion.codigoAccion),
+                child: Text(
+                  opcion.etiqueta,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
         ],
       ),
     );

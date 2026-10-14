@@ -842,6 +842,154 @@ void main() {
         isTrue,
       );
     });
+
+    test('eventos con decision: genera evento en encuentros intermedios y aplica efectos de estudiar_codice y mercader_poder', () async {
+      final opcionCritica = OpcionEncuentro(
+        idOpcion: 'op-critica',
+        idEncuentro: 'enc-1',
+        letra: 'A',
+        texto: 'Crítico',
+        calidad: 2,
+      );
+      final opcionAcierto = OpcionEncuentro(
+        idOpcion: 'op-acierto',
+        idEncuentro: 'enc-1',
+        letra: 'B',
+        texto: 'Acierto',
+        calidad: 1,
+      );
+      final opcionFallo = OpcionEncuentro(
+        idOpcion: 'op-fallo',
+        idEncuentro: 'enc-1',
+        letra: 'C',
+        texto: 'Fallo',
+        calidad: 0,
+      );
+
+      final encuentros = [
+        Encuentro(
+          idEncuentro: 'enc-1',
+          idQuest: 'q-eventos',
+          numero: 1,
+          pregunta: 'Pregunta 1',
+          dificultad: 'facil',
+          tipoEncuentro: 'normal',
+          vidaEnemigo: 25,
+          enemigo: 'Enemigo 1',
+          opciones: [opcionCritica, opcionAcierto, opcionFallo],
+        ),
+        Encuentro(
+          idEncuentro: 'enc-2',
+          idQuest: 'q-eventos',
+          numero: 2,
+          pregunta: 'Pregunta 2',
+          dificultad: 'facil',
+          tipoEncuentro: 'normal',
+          vidaEnemigo: 25,
+          enemigo: 'Enemigo 2',
+          opciones: [opcionCritica, opcionAcierto, opcionFallo],
+        ),
+        Encuentro(
+          idEncuentro: 'enc-3',
+          idQuest: 'q-eventos',
+          numero: 3,
+          pregunta: 'Pregunta 3',
+          dificultad: 'facil',
+          tipoEncuentro: 'normal',
+          vidaEnemigo: 25,
+          enemigo: 'Enemigo 3',
+          opciones: [opcionCritica, opcionAcierto, opcionFallo],
+        ),
+        Encuentro(
+          idEncuentro: 'enc-4',
+          idQuest: 'q-eventos',
+          numero: 4,
+          pregunta: 'Jefe',
+          dificultad: 'dificil',
+          tipoEncuentro: 'jefe',
+          vidaEnemigo: 50,
+          enemigo: 'Jefe',
+          opciones: [opcionCritica, opcionAcierto, opcionFallo],
+        ),
+      ];
+
+      final repoQuest = FakeQuestRepository(encuentros);
+      final repoPartida = FakePartidaRepository();
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(repoPartida),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
+        duracionPausaTurno: Duration.zero,
+      );
+
+      await controller.cargarQuest('q-eventos', 'u-1');
+
+      // 1. Derrotar enemigo 1 (25 HP) con crítico (25 daño)
+      await controller.elegirOpcion(opcionCritica);
+      expect(controller.enemigosDerrotados, equals(1));
+      expect(controller.encuentroSuperado, isTrue);
+      expect(controller.esFinDeRonda, isFalse);
+
+      // Debe generar evento de encuentro intermedio (Caso 1: Códice Arcano)
+      expect(controller.eventoActivo, isNotNull);
+      expect(controller.eventoActivo!.titulo, contains('Códice Arcano'));
+
+      // Resolver con 'estudiar_codice': -10 HP, +100 score, +1 comodín
+      final scoreAntesEvento = controller.score;
+      final vidaAntesEvento = controller.vidaJugador;
+      controller.resolverEventoDecision('estudiar_codice');
+
+      expect(controller.eventoActivo, isNull);
+      expect(controller.encuentroSuperado, isFalse);
+      expect(controller.vidaJugador, equals(vidaAntesEvento - 10));
+      expect(controller.score, equals(scoreAntesEvento + 100));
+      expect(
+        controller.historialNarrativo.any((l) =>
+            l.contains('[COMODIN]') && l.contains('Estudiaste el Códice Arcano')),
+        isTrue,
+      );
+
+      // Ahora estamos en el enemigo 2 (vidaEnemigo = 25)
+      expect(controller.vidaEnemigo, equals(25));
+
+      // 2. Derrotar enemigo 2 con crítico
+      await controller.elegirOpcion(opcionCritica);
+      expect(controller.enemigosDerrotados, equals(2));
+      expect(controller.encuentroSuperado, isTrue);
+      expect(controller.esFinDeRonda, isFalse);
+
+      // Debe generar evento de encuentro intermedio (Caso 2: Mercader del Abismo)
+      expect(controller.eventoActivo, isNotNull);
+      expect(controller.eventoActivo!.titulo, contains('Mercader del Abismo'));
+
+      // Resolver con 'mercader_poder': -15 HP, +150 score, +1 golpe doble
+      final golpesDoblesAntes =
+          controller.wildcards[TipoWildcard.golpeDoble] ?? 0;
+      final scoreAntesMercader = controller.score;
+      final vidaAntesMercader = controller.vidaJugador;
+      controller.resolverEventoDecision('mercader_poder');
+
+      expect(controller.eventoActivo, isNull);
+      expect(controller.encuentroSuperado, isFalse);
+      expect(controller.vidaJugador, equals(vidaAntesMercader - 15));
+      expect(controller.score, equals(scoreAntesMercader + 150));
+      expect(controller.wildcards[TipoWildcard.golpeDoble],
+          equals(golpesDoblesAntes + 1));
+      expect(
+        controller.historialNarrativo.any((l) =>
+            l.contains('[CRITICO]') &&
+            l.contains('Aceptaste el Pacto del Mercader')),
+        isTrue,
+      );
+
+      // 3. Derrotar enemigo 3 (completa ronda 1: enemigosDerrotados = 3)
+      await controller.elegirOpcion(opcionCritica);
+      expect(controller.enemigosDerrotados, equals(3));
+      expect(controller.esFinDeRonda, isTrue);
+      // Fin de ronda: no hay evento intermedio, se muestra el Altar de Ronda
+      expect(controller.eventoActivo, isNull);
+    });
   });
 }
 

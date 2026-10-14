@@ -12,6 +12,25 @@ import '../../../domain/usecases/generar_encuentros_extra_usecase.dart';
 import '../../../domain/usecases/responder_encuentro_usecase.dart';
 import '../../../domain/entities/wildcard.dart';
 
+class OpcionEvento {
+  final String etiqueta;
+  final String codigoAccion; // 'estudiar_codice', 'destruir_codice', 'mercader_curar', 'mercader_poder', 'fuente_canalizar', 'ignorar'
+  const OpcionEvento({required this.etiqueta, required this.codigoAccion});
+}
+
+class EventoDecision {
+  final String titulo;
+  final String descripcion;
+  final String iconoEmoji;
+  final List<OpcionEvento> opciones;
+  const EventoDecision({
+    required this.titulo,
+    required this.descripcion,
+    required this.iconoEmoji,
+    required this.opciones,
+  });
+}
+
 class CombateController extends ChangeNotifier {
   final QuestRepository _questRepository;
   final ResponderEncuentroUseCase _responderUseCase;
@@ -53,6 +72,7 @@ class CombateController extends ChangeNotifier {
   int _rachaMaxima = 0;
   bool _modoTemerarioActivo = false;
   int _rondasTemerariasSuperadas = 0;
+  EventoDecision? _eventoActivo;
 
   int get score => _score;
   int get enemigosDerrotados => _enemigosDerrotados;
@@ -63,6 +83,8 @@ class CombateController extends ChangeNotifier {
   int get rondasTemerariasSuperadas => _rondasTemerariasSuperadas;
   int get bonusPorTemerario => _rondasTemerariasSuperadas * 200;
   bool get esperandoDecisionRonda => encuentroSuperado;
+  EventoDecision? get eventoActivo => _eventoActivo;
+  bool get esFinDeRonda => _enemigosDerrotados > 0 && _enemigosDerrotados % 3 == 0;
 
   bool get ganoCombate => jugadorGano;
   int get puntosPorEnemigos => _enemigosDerrotados * 100;
@@ -227,6 +249,7 @@ class CombateController extends ChangeNotifier {
     _rachaMaxima = 0;
     _modoTemerarioActivo = false;
     _rondasTemerariasSuperadas = 0;
+    _eventoActivo = null;
     _historialNarrativo.clear();
     turnoEnProceso = false;
 
@@ -423,6 +446,48 @@ class CombateController extends ChangeNotifier {
       final hayMasEncuentros = _indiceActual + 1 < _encuentros.length;
       if (hayMasEncuentros) {
         encuentroSuperado = true;
+        if (_enemigosDerrotados % 3 != 0) {
+          final caso = _enemigosDerrotados % 3;
+          if (caso == 1) {
+            _eventoActivo = const EventoDecision(
+              titulo: '🏺 Códice Arcano',
+              descripcion:
+                  'Encuentras un antiguo códice brillante entre los restos del enemigo.',
+              iconoEmoji: '🏺',
+              opciones: [
+                OpcionEvento(
+                  etiqueta:
+                      '📖 Estudiar códice (-10 HP | +1 Comodín y +100 pts)',
+                  codigoAccion: 'estudiar_codice',
+                ),
+                OpcionEvento(
+                  etiqueta: '🛡️ Purificar energía (+15 HP seguros)',
+                  codigoAccion: 'destruir_codice',
+                ),
+              ],
+            );
+          } else {
+            _eventoActivo = const EventoDecision(
+              titulo: '🧙‍♂️ Mercader del Abismo',
+              descripcion:
+                  'Un mercader encapuchado emerge de las sombras ofreciendo un trato.',
+              iconoEmoji: '🧙‍♂️',
+              opciones: [
+                OpcionEvento(
+                  etiqueta:
+                      '⚡ Pacto de Poder (-15 HP | +1 Golpe Doble y +150 pts)',
+                  codigoAccion: 'mercader_poder',
+                ),
+                OpcionEvento(
+                  etiqueta: '💚 Elixir Menor (+20 HP sin costo)',
+                  codigoAccion: 'mercader_curar',
+                ),
+              ],
+            );
+          }
+        } else {
+          _eventoActivo = null;
+        }
         _avanzarSiguienteEnemigo();
       } else {
         combateTerminado = true;
@@ -505,6 +570,7 @@ class CombateController extends ChangeNotifier {
 
   /// Desbloquea la transición de ronda permitiendo elegir Descanso Seguro o Pacto Temerario.
   void continuarSiguienteRonda({bool temerario = false}) {
+    _eventoActivo = null;
     if (temerario) {
       _modoTemerarioActivo = true;
       if (vidaJugador > 25) {
@@ -531,6 +597,49 @@ class CombateController extends ChangeNotifier {
 
   /// Desbloquea la transición entre encuentros (mantiene compatibilidad anterior).
   void continuarSiguienteEncuentro() => continuarSiguienteRonda(temerario: false);
+
+  /// Resuelve la opción elegida por el jugador en un evento de decisión entre combates.
+  void resolverEventoDecision(String codigoAccion) {
+    switch (codigoAccion) {
+      case 'estudiar_codice':
+        vidaJugador = (vidaJugador - 10).clamp(1, 100);
+        _score += 100;
+        _otorgarWildcardAleatoria();
+        _agregarNarrativa(
+            '[COMODIN] 📖 Estudiaste el Códice Arcano: -10 HP, +100 pts y obtuviste un comodín.');
+        break;
+      case 'destruir_codice':
+        vidaJugador = (vidaJugador + 15).clamp(0, 100);
+        _agregarNarrativa(
+            '[COMODIN] 🛡️ Purificaste el Códice Arcano: recuperas +15 HP (Vida: $vidaJugador/100).');
+        break;
+      case 'mercader_poder':
+        vidaJugador = (vidaJugador - 15).clamp(1, 100);
+        _score += 150;
+        _wildcards[TipoWildcard.golpeDoble] =
+            (_wildcards[TipoWildcard.golpeDoble] ?? 0) + 1;
+        _agregarNarrativa(
+            '[CRITICO] ⚡ Aceptaste el Pacto del Mercader: -15 HP, +150 pts y +1 Golpe Doble.');
+        break;
+      case 'mercader_curar':
+        vidaJugador = (vidaJugador + 20).clamp(0, 100);
+        _agregarNarrativa(
+            '[COMODIN] 💚 Bebiste el Elixir del Mercader: recuperas +20 HP (Vida: $vidaJugador/100).');
+        break;
+    }
+
+    _eventoActivo = null;
+    if (encuentroSuperado) {
+      encuentroSuperado = false;
+      mensajeUltimoTurno = null;
+      notifyListeners();
+      return;
+    }
+    if (_indiceActual + 1 < _encuentros.length) {
+      _avanzarSiguienteEnemigo();
+    }
+    notifyListeners();
+  }
 
   /// Pausa el combate actual.
   void pausarCombate() {
