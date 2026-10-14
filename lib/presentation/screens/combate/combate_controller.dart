@@ -49,10 +49,19 @@ class CombateController extends ChangeNotifier {
   int _score = 0;
   int _enemigosDerrotados = 0;
   int _ronda = 1;
+  int _rachaActual = 0;
 
   int get score => _score;
   int get enemigosDerrotados => _enemigosDerrotados;
   int get ronda => _ronda;
+  int get rachaActual => _rachaActual;
+
+  double get multiplicadorRacha {
+    if (_rachaActual >= 7) return 1.75;
+    if (_rachaActual >= 5) return 1.5;
+    if (_rachaActual >= 3) return 1.25;
+    return 1.0;
+  }
 
   final Map<TipoWildcard, int> _wildcards = {};
   final Set<String> _opcionesOcultas = {};
@@ -194,6 +203,7 @@ class CombateController extends ChangeNotifier {
     _score = 0;
     _enemigosDerrotados = 0;
     _ronda = 1;
+    _rachaActual = 0;
     turnoEnProceso = false;
 
     _wildcards.clear();
@@ -266,19 +276,37 @@ class CombateController extends ChangeNotifier {
     );
     resultadoUltimoTurno = resultado;
 
+    final esAciertoOCritico = resultado.resultado == ResultadoTurno.acierto ||
+        resultado.resultado == ResultadoTurno.critico;
+
+    if (esAciertoOCritico) {
+      _rachaActual += 1;
+
+      // Bonus de score por hitos de racha
+      if (_rachaActual == 5) {
+        _score += 50;
+      } else if (_rachaActual == 7) {
+        _score += 100;
+      }
+    } else {
+      _rachaActual = 0;
+    }
+
     final aplicaGolpeDoble = _golpeDobleActivo;
     final aplicaRoboDeVida = _roboDeVidaActivo;
 
     var danioAlEnemigoFinal = resultado.danoAlEnemigo;
+    // Multiplicador de racha (solo afecta daño positivo al enemigo)
+    if (esAciertoOCritico && resultado.danoAlEnemigo > 0) {
+      danioAlEnemigoFinal = (danioAlEnemigoFinal * multiplicadorRacha).round();
+    }
+    // Multiplicador de golpe doble (wildcard)
     if (aplicaGolpeDoble && resultado.danoAlEnemigo > 0) {
       danioAlEnemigoFinal *= 2;
     }
 
     vidaEnemigo = (vidaEnemigo - danioAlEnemigoFinal).clamp(0, 999);
     vidaJugador = (vidaJugador - resultado.danoAlJugador).clamp(0, 999);
-
-    final esAciertoOCritico = resultado.resultado == ResultadoTurno.acierto ||
-        resultado.resultado == ResultadoTurno.critico;
 
     if (aplicaRoboDeVida && esAciertoOCritico) {
       vidaJugador = (vidaJugador + 10).clamp(0, 100);
@@ -287,10 +315,24 @@ class CombateController extends ChangeNotifier {
     switch (resultado.resultado) {
       case ResultadoTurno.critico:
         mensajeUltimoTurno = '¡Golpe crítico! -$danioAlEnemigoFinal HP al enemigo';
+        if (_rachaActual >= 7) {
+          mensajeUltimoTurno = '$mensajeUltimoTurno | 🔥 ¡RACHA LEGENDARIA!';
+        } else if (_rachaActual >= 5) {
+          mensajeUltimoTurno = '$mensajeUltimoTurno | 🔥 ¡Racha imparable!';
+        } else if (_rachaActual >= 3) {
+          mensajeUltimoTurno = '$mensajeUltimoTurno | 🔥 Racha x$_rachaActual';
+        }
         _score += 125;
         break;
       case ResultadoTurno.acierto:
         mensajeUltimoTurno = 'Correcto. -$danioAlEnemigoFinal HP al enemigo';
+        if (_rachaActual >= 7) {
+          mensajeUltimoTurno = '$mensajeUltimoTurno | 🔥 ¡RACHA LEGENDARIA!';
+        } else if (_rachaActual >= 5) {
+          mensajeUltimoTurno = '$mensajeUltimoTurno | 🔥 ¡Racha imparable!';
+        } else if (_rachaActual >= 3) {
+          mensajeUltimoTurno = '$mensajeUltimoTurno | 🔥 Racha x$_rachaActual';
+        }
         _score += 100;
         break;
       case ResultadoTurno.fallo:

@@ -425,6 +425,13 @@ class _CombateContenido extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (controller.rachaActual >= 3)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Center(
+                child: _IndicadorRacha(racha: controller.rachaActual),
+              ),
+            ),
           _EnemigoCard(
             categoria: categoria,
             nombre: 'Encuentro ${encuentro.numero}',
@@ -1574,6 +1581,95 @@ class _WildcardButton extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IndicadorRacha extends StatefulWidget {
+  final int racha;
+  const _IndicadorRacha({required this.racha});
+
+  @override
+  State<_IndicadorRacha> createState() => _IndicadorRachaState();
+}
+
+class _IndicadorRachaState extends State<_IndicadorRacha>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+  int _rachaAnterior = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    );
+    _rachaAnterior = widget.racha;
+    _controller.forward(from: 0).then((_) {
+      if (mounted) _controller.reverse();
+    });
+  }
+
+  @override
+  void didUpdateWidget(_IndicadorRacha oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.racha != _rachaAnterior) {
+      _rachaAnterior = widget.racha;
+      _controller.forward(from: 0).then((_) {
+        if (mounted) _controller.reverse();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.racha >= 7
+        ? Colors.orange
+        : (widget.racha >= 5 ? Colors.deepOrange : AppTheme.doradoCritico);
+
+    return ScaleTransition(
+      scale: _scale,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.4),
+              blurRadius: 12,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🔥', style: TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
+            Text(
+              'RACHA x${widget.racha}',
+              style: TextStyle(
+                fontFamily: 'PressStart2P',
+                fontSize: 11,
+                color: color,
+              ),
+            ),
+          ],
         ),
       ),
     );

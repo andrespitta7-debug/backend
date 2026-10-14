@@ -481,7 +481,7 @@ void main() {
       expect(totalDespues, equals(1)); // Se otorgó 1
     });
 
-    test('al finalizar partida calcula XP proporcional al score (min 10, max 1000)', () async {
+    test('al finalizar partida asigna enemigosDerrotados y delega score/XP al servidor', () async {
       final repoQuest = FakeQuestRepository([encuentroNormal1]);
       final repoPartida = FakePartidaRepository();
       final controller = CombateController(
@@ -493,12 +493,13 @@ void main() {
       );
       await controller.cargarQuest('q-1', 'u-1');
 
-      // Caso 1: Retirarse sin score da mínimo 10 XP
+      // Caso 1: Retirarse sin derrotar enemigos asigna enemigosDerrotados = 0 y score = 0
       await controller.retirarse();
-      expect(controller.partida.xpObtenida, equals(10));
-      expect(repoPartida.ultimaPartidaGuardada!.xpObtenida, equals(10));
+      expect(controller.partida.enemigosDerrotados, equals(0));
+      expect(controller.partida.score, equals(0));
+      expect(repoPartida.ultimaPartidaGuardada!.enemigosDerrotados, equals(0));
 
-      // Caso 2: Con score acumulado tras acertar
+      // Caso 2: Derrotar al enemigo asigna enemigosDerrotados = 1 y score = 0
       final controller2 = CombateController(
         repoQuest,
         ResponderEncuentroUseCase(),
@@ -507,13 +508,118 @@ void main() {
         duracionPausaTurno: Duration.zero,
       );
       await controller2.cargarQuest('q-1', 'u-1');
-      // Acierto crítico suma 125 score
       await controller2.elegirOpcion(opcionCritica);
-      // Retirarse con score 125: (125 / 10).round() = 13
-      await controller2.retirarse();
-      expect(controller2.partida.score, equals(125));
-      expect(controller2.partida.xpObtenida, equals(13));
-      expect(repoPartida.ultimaPartidaGuardada!.xpObtenida, equals(13));
+      await controller2.elegirOpcion(opcionCritica);
+      expect(controller2.partida.enemigosDerrotados, equals(1));
+      expect(controller2.partida.score, equals(0));
+      expect(repoPartida.ultimaPartidaGuardada!.enemigosDerrotados, equals(1));
+    });
+
+    test('sistema de racha: incrementa con aciertos/críticos, aplica multiplicador, bonos de score, convive con golpe doble y resetea con fallo', () async {
+      final opcionAcierto = OpcionEncuentro(
+        idOpcion: 'op-acierto',
+        idEncuentro: 'enc-esponja',
+        letra: 'B',
+        texto: 'Acierto normal',
+        calidad: 1,
+      );
+      final opcionFallo = OpcionEncuentro(
+        idOpcion: 'op-fallo',
+        idEncuentro: 'enc-esponja',
+        letra: 'C',
+        texto: 'Fallo',
+        calidad: 0,
+      );
+      final enemigoEsponja = Encuentro(
+        idEncuentro: 'enc-esponja',
+        idQuest: 'q-racha',
+        numero: 1,
+        pregunta: 'Pregunta racha',
+        dificultad: 'facil',
+        tipoEncuentro: 'normal',
+        vidaEnemigo: 1000,
+        opciones: [opcionAcierto, opcionCritica, opcionFallo],
+      );
+
+      final repoQuest = FakeQuestRepository([enemigoEsponja]);
+      final repoPartida = FakePartidaRepository();
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(repoPartida),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
+        duracionPausaTurno: Duration.zero,
+      );
+      await controller.cargarQuest('q-racha', 'u-1');
+
+      expect(controller.rachaActual, equals(0));
+      expect(controller.multiplicadorRacha, equals(1.0));
+
+      // Turno 1: Crítico -> racha 1 (base 25 daño)
+      await controller.elegirOpcion(opcionCritica);
+      expect(controller.rachaActual, equals(1));
+      expect(controller.multiplicadorRacha, equals(1.0));
+      expect(controller.vidaEnemigo, equals(1000 - 25));
+
+      // Turno 2: Acierto -> racha 2 (base 12 daño)
+      await controller.elegirOpcion(opcionAcierto);
+      expect(controller.rachaActual, equals(2));
+      expect(controller.multiplicadorRacha, equals(1.0));
+      expect(controller.vidaEnemigo, equals(975 - 12)); // 963
+
+      // Turno 3: Acierto -> racha 3 (multiplicador 1.25x -> round(12 * 1.25) = 15 daño)
+      await controller.elegirOpcion(opcionAcierto);
+      expect(controller.rachaActual, equals(3));
+      expect(controller.multiplicadorRacha, equals(1.25));
+      expect(controller.vidaEnemigo, equals(963 - 15)); // 948
+
+      // Turno 4: Acierto -> racha 4 (multiplicador 1.25x -> 15 daño)
+      await controller.elegirOpcion(opcionAcierto);
+      expect(controller.rachaActual, equals(4));
+      expect(controller.multiplicadorRacha, equals(1.25));
+      expect(controller.vidaEnemigo, equals(948 - 15)); // 933
+
+      // Turno 5: Acierto -> racha 5 (multiplicador 1.5x -> round(12 * 1.5) = 18 daño)
+      // Bonus score: al llegar a 5 suma +50 (+ 100 de acierto = +150)
+      final scoreAntesDe5 = controller.score;
+      await controller.elegirOpcion(opcionAcierto);
+      expect(controller.rachaActual, equals(5));
+      expect(controller.multiplicadorRacha, equals(1.5));
+      expect(controller.vidaEnemigo, equals(933 - 18)); // 915
+      expect(controller.score, equals(scoreAntesDe5 + 100 + 50));
+
+      // Turno 6: Acierto -> racha 6 (multiplicador 1.5x -> 18 daño)
+      await controller.elegirOpcion(opcionAcierto);
+      expect(controller.rachaActual, equals(6));
+      expect(controller.multiplicadorRacha, equals(1.5));
+      expect(controller.vidaEnemigo, equals(915 - 18)); // 897
+
+      // Turno 7: Acierto -> racha 7 (multiplicador 1.75x -> round(12 * 1.75) = 21 daño)
+      // Bonus score: al llegar a 7 suma +100 (+ 100 de acierto = +200)
+      final scoreAntesDe7 = controller.score;
+      await controller.elegirOpcion(opcionAcierto);
+      expect(controller.rachaActual, equals(7));
+      expect(controller.multiplicadorRacha, equals(1.75));
+      expect(controller.vidaEnemigo, equals(897 - 21)); // 876
+      expect(controller.score, equals(scoreAntesDe7 + 100 + 100));
+
+      // Fallo resetea racha a 0
+      await controller.elegirOpcion(opcionFallo);
+      expect(controller.rachaActual, equals(0));
+      expect(controller.multiplicadorRacha, equals(1.0));
+
+      // Convivencia racha y golpe doble:
+      // Construir racha hasta 4, luego activar golpe doble y acertar para llegar a racha 5
+      for (var i = 0; i < 4; i++) {
+        await controller.elegirOpcion(opcionAcierto);
+      }
+      expect(controller.rachaActual, equals(4));
+      await controller.usarWildcard(TipoWildcard.golpeDoble);
+      final vidaAntesGolpeDoble = controller.vidaEnemigo;
+      // Al acertar, racha pasa a 5 (mult 1.5x -> 12 * 1.5 = 18), y golpe doble duplica -> 18 * 2 = 36
+      await controller.elegirOpcion(opcionAcierto);
+      expect(controller.rachaActual, equals(5));
+      expect(controller.vidaEnemigo, equals(vidaAntesGolpeDoble - 36));
     });
   });
 }
