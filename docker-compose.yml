@@ -1,0 +1,14 @@
+services:
+  sysquest-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SUPABASE_URL=${SUPABASE_URL:-https://jctulgfdweeurqbmugot.supabase.co}
+        - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
+    container_name: sysquest_frontend_app
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production

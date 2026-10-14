@@ -8,6 +8,8 @@ class Encuentro {
   final String dificultad;
   final String tipoEncuentro; // "normal" o "jefe"
   final int vidaEnemigo;
+  final String? enemigo;
+  final String? codigo;
   final List<OpcionEncuentro> opciones; // siempre 4
 
   const Encuentro({
@@ -18,6 +20,8 @@ class Encuentro {
     required this.dificultad,
     required this.tipoEncuentro,
     required this.vidaEnemigo,
+    this.enemigo,
+    this.codigo,
     required this.opciones,
   });
 
