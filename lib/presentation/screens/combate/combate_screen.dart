@@ -431,6 +431,29 @@ class _CombateContenido extends StatelessWidget {
                 child: _IndicadorRacha(racha: controller.rachaActual),
               ),
             ),
+          if (controller.modoTemerarioActivo)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.rojoDanio.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppTheme.rojoDanio, width: 2),
+                  ),
+                  child: const Text(
+                    '💀 MODO TEMERARIO ACTIVO (+30% DAÑO | +200 PTS)',
+                    style: TextStyle(
+                      fontFamily: 'PressStart2P',
+                      fontSize: 8,
+                      color: AppTheme.rojoDanio,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
           _EnemigoCard(
             categoria: categoria,
             nombre: 'Encuentro ${encuentro.numero}',
@@ -449,7 +472,15 @@ class _CombateContenido extends StatelessWidget {
               onContinuar: onDismissNarrativa,
             )
           else if (controller.encuentroSuperado)
-            _RondaSuperada(onContinuar: onContinuar)
+            _RondaSuperada(
+              rondaActual: controller.ronda,
+              vidaActual: controller.vidaJugador,
+              onDescansoSeguro: () =>
+                  controller.continuarSiguienteRonda(temerario: false),
+              onPactoTemerario: () =>
+                  controller.continuarSiguienteRonda(temerario: true),
+              onRetirarseConBotin: () => controller.retirarse(),
+            )
           else if (controller.combateTerminado)
             _FinCombate(
               controller: controller,
@@ -967,25 +998,111 @@ class _MensajeTurno extends StatelessWidget {
 }
 
 class _RondaSuperada extends StatelessWidget {
-  final VoidCallback onContinuar;
-  const _RondaSuperada({required this.onContinuar});
+  final VoidCallback onDescansoSeguro;
+  final VoidCallback onPactoTemerario;
+  final VoidCallback onRetirarseConBotin;
+  final int rondaActual;
+  final int vidaActual;
+
+  const _RondaSuperada({
+    required this.onDescansoSeguro,
+    required this.onPactoTemerario,
+    required this.onRetirarseConBotin,
+    required this.rondaActual,
+    required this.vidaActual,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const Icon(Icons.shield, color: AppTheme.doradoCritico, size: 56),
-        const SizedBox(height: 12),
-        Text(
-          '¡Ronda ganada!',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: onContinuar,
-          child: const Text('Siguiente reto'),
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.superficieNoche,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.doradoCritico, width: 2),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.auto_awesome, color: AppTheme.doradoCritico, size: 48),
+          const SizedBox(height: 8),
+          Text(
+            '¡RONDA $rondaActual SUPERADA!',
+            style: const TextStyle(
+              fontFamily: 'PressStart2P',
+              fontSize: 12,
+              color: AppTheme.doradoCritico,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Vida actual: $vidaActual/100 HP',
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.white70,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Elige tu destino para la siguiente ronda:',
+            style: TextStyle(
+              fontStyle: FontStyle.italic,
+              fontSize: 12,
+              color: AppTheme.azulTexto,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.verdeVida,
+                foregroundColor: AppTheme.fondoNoche,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: onDescansoSeguro,
+              child: const Text(
+                '🛡️ Descanso Seguro (+25 HP)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.rojoDanio,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: onPactoTemerario,
+              child: const Text(
+                '💀 Pacto Temerario (-10 HP | +30% Daño y +200 pts)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white70,
+                side: const BorderSide(color: Colors.white30),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              onPressed: onRetirarseConBotin,
+              child: const Text(
+                '💰 Retirarse con el botín actual',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1086,6 +1203,13 @@ class _ResumenPartidaCard extends StatelessWidget {
             _FilaResumen(
               etiqueta: '🏆 Bonus de Victoria',
               valor: '+${controller.bonusPorVictoria} pts',
+            ),
+          ],
+          if (controller.rondasTemerariasSuperadas > 0) ...[
+            const SizedBox(height: 8),
+            _FilaResumen(
+              etiqueta: '💀 Rondas temerarias (${controller.rondasTemerariasSuperadas})',
+              valor: '+${controller.bonusPorTemerario} pts',
             ),
           ],
           const Padding(

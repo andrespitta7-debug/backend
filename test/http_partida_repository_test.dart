@@ -74,6 +74,7 @@ void main() {
         expect(body['encuentro_actual'], equals(2));
         expect(body['enemigos_derrotados'], equals(3));
         expect(body['racha_maxima'], equals(0));
+        expect(body['rondas_temerarias'], equals(0));
         expect(body.containsKey('score'), isFalse);
         expect(body.containsKey('xp_obtenida'), isFalse);
         expect(body['tiempo_segundos'], equals(45));

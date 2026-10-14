@@ -51,12 +51,18 @@ class CombateController extends ChangeNotifier {
   int _ronda = 1;
   int _rachaActual = 0;
   int _rachaMaxima = 0;
+  bool _modoTemerarioActivo = false;
+  int _rondasTemerariasSuperadas = 0;
 
   int get score => _score;
   int get enemigosDerrotados => _enemigosDerrotados;
   int get ronda => _ronda;
   int get rachaActual => _rachaActual;
   int get rachaMaxima => _rachaMaxima;
+  bool get modoTemerarioActivo => _modoTemerarioActivo;
+  int get rondasTemerariasSuperadas => _rondasTemerariasSuperadas;
+  int get bonusPorTemerario => _rondasTemerariasSuperadas * 200;
+  bool get esperandoDecisionRonda => encuentroSuperado;
 
   bool get ganoCombate => jugadorGano;
   int get puntosPorEnemigos => _enemigosDerrotados * 100;
@@ -219,6 +225,8 @@ class CombateController extends ChangeNotifier {
     _ronda = 1;
     _rachaActual = 0;
     _rachaMaxima = 0;
+    _modoTemerarioActivo = false;
+    _rondasTemerariasSuperadas = 0;
     _historialNarrativo.clear();
     turnoEnProceso = false;
 
@@ -318,13 +326,20 @@ class CombateController extends ChangeNotifier {
     if (esAciertoOCritico && resultado.danoAlEnemigo > 0) {
       danioAlEnemigoFinal = (danioAlEnemigoFinal * multiplicadorRacha).round();
     }
+    // Modo temerario: +30% de daño al enemigo en aciertos/críticos
+    if (esAciertoOCritico && danioAlEnemigoFinal > 0 && _modoTemerarioActivo) {
+      danioAlEnemigoFinal = (danioAlEnemigoFinal * 1.3).round();
+    }
     // Multiplicador de golpe doble (wildcard)
     if (aplicaGolpeDoble && resultado.danoAlEnemigo > 0) {
       danioAlEnemigoFinal *= 2;
     }
 
+    final danioAlJugadorFinal = resultado.danoAlJugador +
+        (_modoTemerarioActivo && resultado.danoAlJugador > 0 ? 5 : 0);
+
     vidaEnemigo = (vidaEnemigo - danioAlEnemigoFinal).clamp(0, 999);
-    vidaJugador = (vidaJugador - resultado.danoAlJugador).clamp(0, 999);
+    vidaJugador = (vidaJugador - danioAlJugadorFinal).clamp(0, 999);
 
     if (aplicaRoboDeVida && esAciertoOCritico) {
       vidaJugador = (vidaJugador + 10).clamp(0, 100);
@@ -349,7 +364,7 @@ class CombateController extends ChangeNotifier {
     }
 
     if (resultado.resultado == ResultadoTurno.fallo) {
-      _agregarNarrativa('[CONTRAATAQUE] 🩸 Fallaste. $nombreEnemigo contraataca con furia y te quita -${resultado.danoAlJugador} HP.');
+      _agregarNarrativa('[CONTRAATAQUE] 🩸 Fallaste. $nombreEnemigo contraataca con furia y te quita -$danioAlJugadorFinal HP.');
       if (rachaPrevia >= 3) {
         _agregarNarrativa('[CONTRAATAQUE] 💔 ¡Perdiste tu racha de $rachaPrevia aciertos!');
       }
@@ -379,7 +394,7 @@ class CombateController extends ChangeNotifier {
         _score += 100;
         break;
       case ResultadoTurno.fallo:
-        mensajeUltimoTurno = 'Incorrecto. El enemigo contraataca: -${resultado.danoAlJugador} HP';
+        mensajeUltimoTurno = 'Incorrecto. El enemigo contraataca: -$danioAlJugadorFinal HP';
         break;
     }
 
@@ -399,6 +414,11 @@ class CombateController extends ChangeNotifier {
         _ronda += 1;
         _score += 500;
         _otorgarWildcardAleatoria();
+        if (_modoTemerarioActivo) {
+          _rondasTemerariasSuperadas += 1;
+          _score += 200;
+          _agregarNarrativa('[RACHA] 💀 ¡Sobreviviste al Pacto Temerario! +200 pts extra.');
+        }
       }
       final hayMasEncuentros = _indiceActual + 1 < _encuentros.length;
       if (hayMasEncuentros) {
@@ -483,8 +503,20 @@ class CombateController extends ChangeNotifier {
     }
   }
 
-  /// Desbloquea la transición entre encuentros (o avanza al siguiente si se invoca manualmente).
-  void continuarSiguienteEncuentro() {
+  /// Desbloquea la transición de ronda permitiendo elegir Descanso Seguro o Pacto Temerario.
+  void continuarSiguienteRonda({bool temerario = false}) {
+    if (temerario) {
+      _modoTemerarioActivo = true;
+      if (vidaJugador > 25) {
+        vidaJugador = (vidaJugador - 10).clamp(1, 100);
+      }
+      _agregarNarrativa('[CRITICO] 💀 ¡Pacto Temerario aceptado! Daño +30%, Recompensa +200 pts, Enemigos +5 daño.');
+    } else {
+      _modoTemerarioActivo = false;
+      vidaJugador = (vidaJugador + 25).clamp(0, 100);
+      _agregarNarrativa('[COMODIN] 🛡️ Descansaste en la hoguera: recuperas +25 HP (Vida: $vidaJugador/100).');
+    }
+
     if (encuentroSuperado) {
       encuentroSuperado = false;
       mensajeUltimoTurno = null;
@@ -496,6 +528,9 @@ class CombateController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Desbloquea la transición entre encuentros (mantiene compatibilidad anterior).
+  void continuarSiguienteEncuentro() => continuarSiguienteRonda(temerario: false);
 
   /// Pausa el combate actual.
   void pausarCombate() {
@@ -527,6 +562,7 @@ class CombateController extends ChangeNotifier {
     _partida.encuentroActual = _indiceActual;
     _partida.enemigosDerrotados = _enemigosDerrotados;
     _partida.rachaMaxima = _rachaMaxima;
+    _partida.rondasTemerarias = _rondasTemerariasSuperadas;
     // El servidor calculará el score y la XP. Aquí los ponemos en 0
     // solo como valores por defecto (el servidor los ignorará).
     _partida.score = 0;

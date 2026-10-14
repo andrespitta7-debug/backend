@@ -26,6 +26,7 @@ class Partida {
   int vidaJugador; // vida actual del jugador durante la partida
   int enemigosDerrotados;
   int rachaMaxima;
+  int rondasTemerarias;
 
   Partida({
     required this.idPartida,
@@ -39,6 +40,7 @@ class Partida {
     this.vidaJugador = 100,
     this.enemigosDerrotados = 0,
     this.rachaMaxima = 0,
+    this.rondasTemerarias = 0,
   });
 }
 

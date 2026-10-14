@@ -22,7 +22,9 @@ class FinalizarPartidaUseCase {
   }) async {
     partida.estado = gano ? 'ganada' : 'perdida';
     if (partida.score <= 0 && partida.xpObtenida <= 0) {
-      if (partida.enemigosDerrotados == 0 && partida.rachaMaxima == 0) {
+      if (partida.enemigosDerrotados == 0 &&
+          partida.rachaMaxima == 0 &&
+          partida.rondasTemerarias == 0) {
         partida.score = gano ? 150 : 0;
         partida.xpObtenida = gano ? xpPorVictoria : xpPorDerrota;
       } else {
@@ -31,7 +33,9 @@ class FinalizarPartidaUseCase {
             ? 150
             : (partida.rachaMaxima >= 5 ? 50 : 0);
         final bonusVictoria = gano ? 150 : 0;
-        partida.score = puntosEnemigos + bonusRacha + bonusVictoria;
+        final bonusTemerario = partida.rondasTemerarias * 200;
+        partida.score =
+            puntosEnemigos + bonusRacha + bonusVictoria + bonusTemerario;
         partida.xpObtenida = partida.score > 0
             ? (partida.score ~/ 10).clamp(5, 1000)
             : (gano ? xpPorVictoria : 0);

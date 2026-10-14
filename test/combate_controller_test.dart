@@ -695,6 +695,153 @@ void main() {
         isTrue,
       );
     });
+
+    test('sistema riesgo/recompensa: descanso seguro cura +25 HP y pacto temerario aumenta daño +30%, riesgo +5 HP y suma rondasTemerarias', () async {
+      final opcionCritica = OpcionEncuentro(
+        idOpcion: 'op-critica',
+        idEncuentro: 'enc-1',
+        letra: 'A',
+        texto: 'Crítico',
+        calidad: 2,
+      );
+      final opcionAcierto = OpcionEncuentro(
+        idOpcion: 'op-acierto',
+        idEncuentro: 'enc-1',
+        letra: 'B',
+        texto: 'Acierto',
+        calidad: 1,
+      );
+      final opcionFallo = OpcionEncuentro(
+        idOpcion: 'op-fallo',
+        idEncuentro: 'enc-1',
+        letra: 'C',
+        texto: 'Fallo',
+        calidad: 0,
+      );
+
+      final encuentros = [
+        Encuentro(
+          idEncuentro: 'enc-1',
+          idQuest: 'q-temerario',
+          numero: 1,
+          pregunta: 'Pregunta 1',
+          dificultad: 'facil',
+          tipoEncuentro: 'normal',
+          vidaEnemigo: 25,
+          enemigo: 'Enemigo 1',
+          opciones: [opcionCritica, opcionAcierto, opcionFallo],
+        ),
+        Encuentro(
+          idEncuentro: 'enc-2',
+          idQuest: 'q-temerario',
+          numero: 2,
+          pregunta: 'Pregunta 2',
+          dificultad: 'facil',
+          tipoEncuentro: 'normal',
+          vidaEnemigo: 25,
+          enemigo: 'Enemigo 2',
+          opciones: [opcionCritica, opcionAcierto, opcionFallo],
+        ),
+        Encuentro(
+          idEncuentro: 'enc-3',
+          idQuest: 'q-temerario',
+          numero: 3,
+          pregunta: 'Pregunta 3',
+          dificultad: 'facil',
+          tipoEncuentro: 'normal',
+          vidaEnemigo: 25,
+          enemigo: 'Enemigo 3',
+          opciones: [opcionCritica, opcionAcierto, opcionFallo],
+        ),
+        Encuentro(
+          idEncuentro: 'enc-4',
+          idQuest: 'q-temerario',
+          numero: 4,
+          pregunta: 'Jefe',
+          dificultad: 'dificil',
+          tipoEncuentro: 'jefe',
+          vidaEnemigo: 50,
+          enemigo: 'Jefe Final',
+          opciones: [opcionCritica, opcionAcierto, opcionFallo],
+        ),
+      ];
+
+      final repoQuest = FakeQuestRepository(encuentros);
+      final repoPartida = FakePartidaRepository();
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(repoPartida),
+        GenerarEncuentrosExtraUseCase(FakeQuestGeneratorRepository()),
+        duracionPausaTurno: Duration.zero,
+      );
+
+      await controller.cargarQuest('q-temerario', 'u-1');
+
+      // 1. Reducir vida fallando en encuentro 1 (-15 HP -> 85 HP)
+      await controller.elegirOpcion(opcionFallo);
+      expect(controller.vidaJugador, equals(85));
+
+      // Derrotar enemigo 1 (25 HP) con crítico (25 daño)
+      await controller.elegirOpcion(opcionCritica);
+      expect(controller.enemigosDerrotados, equals(1));
+      expect(controller.encuentroSuperado, isTrue);
+
+      // 2. Elegir Descanso Seguro tras superar encuentro 1:
+      // Recupera +25 HP (85 + 25 = 100 max) y desactiva modo temerario
+      controller.continuarSiguienteRonda(temerario: false);
+      expect(controller.encuentroSuperado, isFalse);
+      expect(controller.modoTemerarioActivo, isFalse);
+      expect(controller.vidaJugador, equals(100));
+      expect(
+        controller.historialNarrativo.any((l) => l.contains('[COMODIN]') && l.contains('Descansaste en la hoguera')),
+        isTrue,
+      );
+
+      // 3. Derrotar enemigo 2 (25 HP) con crítico
+      await controller.elegirOpcion(opcionCritica);
+      expect(controller.enemigosDerrotados, equals(2));
+      expect(controller.encuentroSuperado, isTrue);
+
+      // 4. Elegir Pacto Temerario tras superar encuentro 2:
+      // Sacrifica 10 HP (100 -> 90) y activa modo temerario
+      controller.continuarSiguienteRonda(temerario: true);
+      expect(controller.encuentroSuperado, isFalse);
+      expect(controller.modoTemerarioActivo, isTrue);
+      expect(controller.vidaJugador, equals(90));
+      expect(
+        controller.historialNarrativo.any((l) => l.contains('[CRITICO]') && l.contains('Pacto Temerario aceptado')),
+        isTrue,
+      );
+
+      // 5. Daño aumentado con racha x3 y modo temerario (+30%):
+      // Acierto base = 12. Racha x3 (1.25x) = 15. Modo temerario (1.3x): round(15 * 1.3) = 20 daño.
+      final vidaEnemigo3Antes = controller.vidaEnemigo; // 25 HP
+      await controller.elegirOpcion(opcionAcierto);
+      expect(vidaEnemigo3Antes - controller.vidaEnemigo, equals(20));
+      expect(controller.vidaEnemigo, equals(5));
+
+      // 6. Contraataque con +5 HP extra en fallo y reseteo de racha:
+      // Fallo base = 15 daño. Con modo temerario: 15 + 5 = 20 daño.
+      final vidaAntesFallo = controller.vidaJugador; // 90 HP
+      await controller.elegirOpcion(opcionFallo);
+      expect(controller.vidaJugador, equals(vidaAntesFallo - 20)); // 70 HP
+      expect(controller.rachaActual, equals(0));
+
+      // 7. Derrotar enemigo 3 (restaban 5 HP, acierto a racha 1 hace 16 daño):
+      // Completa ronda 1 (_enemigosDerrotados % 3 == 0) en modo temerario
+      final scoreAntesDeRonda = controller.score;
+      await controller.elegirOpcion(opcionAcierto);
+      expect(controller.enemigosDerrotados, equals(3));
+      expect(controller.rondasTemerariasSuperadas, equals(1));
+      expect(controller.bonusPorTemerario, equals(200));
+      // Suma 100 (acierto) + 500 (ronda normal) + 200 (bono temerario)
+      expect(controller.score, equals(scoreAntesDeRonda + 100 + 500 + 200));
+      expect(
+        controller.historialNarrativo.any((l) => l.contains('[RACHA]') && l.contains('¡Sobreviviste al Pacto Temerario!')),
+        isTrue,
+      );
+    });
   });
 }
 

@@ -49,6 +49,7 @@ class HttpPartidaRepository implements PartidaRepository {
       'encuentro_actual': partida.encuentroActual,
       'enemigos_derrotados': partida.enemigosDerrotados,
       'racha_maxima': partida.rachaMaxima,
+      'rondas_temerarias': partida.rondasTemerarias,
       'tiempo_segundos': partida.tiempoSegundos,
       'vida_jugador_actual': partida.vidaJugador,
       'vida_enemigo_actual': null,
