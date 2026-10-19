@@ -135,14 +135,28 @@ class _PerfilScreenState extends State<PerfilScreen> {
       _error = null;
     });
 
+    final nuevoNombre = _nombreController.text.trim();
+    final nuevoApellido = _apellidoController.text.trim();
+    final nuevoUsuario = _nombreUsuarioController.text.trim();
+
+    if (nuevoNombre == _usuario.nombre &&
+        nuevoApellido == _usuario.apellido &&
+        nuevoUsuario == _usuario.nombreUsuario) {
+      setState(() {
+        _guardando = false;
+        _error = 'No has editado nada en tu perfil.';
+      });
+      return;
+    }
+
     try {
       final usuarioActualizado = await context
           .read<ActualizarPerfilUseCase>()
           .ejecutar(
             usuarioActual: _usuario,
-            nombre: _nombreController.text,
-            apellido: _apellidoController.text,
-            nombreUsuario: _nombreUsuarioController.text,
+            nombre: nuevoNombre,
+            apellido: nuevoApellido,
+            nombreUsuario: nuevoUsuario,
           );
       if (!mounted) return;
       setState(() {

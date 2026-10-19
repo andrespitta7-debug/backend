@@ -122,13 +122,14 @@ class SqliteAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Usuario?> autenticar(String email, String passwordPlano) async {
+  Future<Usuario?> autenticar(String emailOUsuario, String passwordPlano) async {
     final db = await _dbHelper.database;
     final passwordHash = PasswordHasher.hash(passwordPlano);
+    final valor = emailOUsuario.trim().toLowerCase();
     final filas = await db.query(
       'usuario',
-      where: 'lower(email) = ? AND password_hash = ?',
-      whereArgs: [email.toLowerCase(), passwordHash],
+      where: '(lower(email) = ? OR lower(nombre_usuario) = ?) AND password_hash = ?',
+      whereArgs: [valor, valor, passwordHash],
     );
     if (filas.isEmpty) return null;
     final r = filas.first;

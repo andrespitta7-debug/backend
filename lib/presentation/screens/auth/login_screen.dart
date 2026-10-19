@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../theme/app_theme.dart';
+import '../../widgets/dialogo_alerta.dart';
 import '../menu/menu_principal_screen.dart';
 import 'auth_controller.dart';
 import 'registro_screen.dart';
@@ -34,7 +35,20 @@ class _LoginScreenState extends State<LoginScreen> {
       _passwordController.text,
       mantenerSesion: _mantenerSesion,
     );
-    if (ok && mounted) {
+    if (!mounted) return;
+
+    if (!ok && auth.error != null) {
+      await DialogoAlertaSysQuest.mostrar(
+        context,
+        titulo: 'FALLO DE ACCESO',
+        mensaje: auth.error!,
+        icono: Icons.lock_clock_outlined,
+        colorPrimario: AppTheme.rojoDanio,
+      );
+      return;
+    }
+
+    if (ok) {
       final usuario = auth.usuarioActual;
       if (usuario == null) return;
       Navigator.pushReplacement(
@@ -84,12 +98,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextField(
                             controller: _emailController,
                             enabled: !auth.cargando,
-                            keyboardType: TextInputType.emailAddress,
+                            keyboardType: TextInputType.text,
                             textInputAction: TextInputAction.next,
-                            autofillHints: const [AutofillHints.email],
+                            autofillHints: const [AutofillHints.email, AutofillHints.username],
                             decoration: const InputDecoration(
-                              labelText: 'Correo electrónico',
-                              prefixIcon: Icon(Icons.email_outlined),
+                              labelText: 'Correo o Usuario',
+                              hintText: 'ej. usuario@correo.com o tu_usuario',
+                              prefixIcon: Icon(Icons.person_pin_outlined),
                             ),
                           ),
                           const SizedBox(height: 14),
@@ -154,6 +169,68 @@ class _LoginScreenState extends State<LoginScreen> {
                                     )
                                   : const Text('Entrar'),
                             ),
+                          ),
+                          const SizedBox(height: 18),
+                          Row(
+                            children: const [
+                              Expanded(child: Divider(color: Colors.white24)),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 10),
+                                child: Text(
+                                  'O continúa con',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white60,
+                                  ),
+                                ),
+                              ),
+                              Expanded(child: Divider(color: Colors.white24)),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _BotonOAuth(
+                                icono: Icons.g_mobiledata,
+                                label: 'Google',
+                                color: const Color(0xFFEA4335),
+                                onTap: () => DialogoAlertaSysQuest.mostrar(
+                                  context,
+                                  titulo: 'AUTENTICACIÓN GOOGLE',
+                                  mensaje:
+                                      'Redireccionando al portal seguro de Google OAuth. Configura tu Client ID en el panel docente para acceso instantáneo.',
+                                  icono: Icons.mail_outline,
+                                  colorPrimario: const Color(0xFFEA4335),
+                                ),
+                              ),
+                              _BotonOAuth(
+                                icono: Icons.window,
+                                label: 'Outlook',
+                                color: const Color(0xFF0078D4),
+                                onTap: () => DialogoAlertaSysQuest.mostrar(
+                                  context,
+                                  titulo: 'AUTENTICACIÓN OUTLOOK',
+                                  mensaje:
+                                      'Conexión con cuenta institucional Microsoft / Outlook lista para enlazar con Supabase Auth.',
+                                  icono: Icons.business,
+                                  colorPrimario: const Color(0xFF0078D4),
+                                ),
+                              ),
+                              _BotonOAuth(
+                                icono: Icons.facebook,
+                                label: 'Facebook',
+                                color: const Color(0xFF1877F2),
+                                onTap: () => DialogoAlertaSysQuest.mostrar(
+                                  context,
+                                  titulo: 'AUTENTICACIÓN FACEBOOK',
+                                  mensaje:
+                                      'Módulo de inicio de sesión con Meta / Facebook disponible para vincular a tu perfil de aventurero.',
+                                  icono: Icons.facebook,
+                                  colorPrimario: const Color(0xFF1877F2),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -249,3 +326,49 @@ class _ErrorBanner extends StatelessWidget {
     );
   }
 }
+
+class _BotonOAuth extends StatelessWidget {
+  final IconData icono;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _BotonOAuth({
+    required this.icono,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E2230),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icono, color: color, size: 20),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

@@ -91,12 +91,12 @@ class IniciarSesionUseCase {
   IniciarSesionUseCase(this._repo, [this._sesionRepo]);
 
   Future<Usuario> ejecutar(
-    String email,
+    String identificador,
     String passwordPlano, {
     bool mantenerSesion = true,
   }) async {
     final usuario = await _repo.autenticar(
-      email.trim().toLowerCase(),
+      identificador.trim().toLowerCase(),
       passwordPlano,
     );
     if (usuario == null) throw CredencialesInvalidasException();

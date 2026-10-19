@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../theme/app_theme.dart';
+import '../../widgets/dialogo_alerta.dart';
+import '../../widgets/terminos_condiciones_dialog.dart';
 import '../menu/menu_principal_screen.dart';
 import 'auth_controller.dart';
 
@@ -106,9 +108,34 @@ class _RegistroScreenState extends State<RegistroScreen> {
       apellido: _apellidoController.text,
       password: _passwordController.text,
     );
-    if (ok && mounted) {
+    if (!mounted) return;
+
+    if (!ok && auth.error != null) {
+      await DialogoAlertaSysQuest.mostrar(
+        context,
+        titulo: 'ERROR DE REGISTRO',
+        mensaje: auth.error!,
+        icono: Icons.error_outline,
+        colorPrimario: AppTheme.rojoDanio,
+      );
+      return;
+    }
+
+    if (ok) {
       final usuario = auth.usuarioActual;
       if (usuario == null) return;
+
+      await DialogoAlertaSysQuest.mostrar(
+        context,
+        titulo: '¡CUENTA CREADA!',
+        mensaje:
+            'Bienvenido a SysQuest, ${usuario.nombre}. Hemos vinculado tu correo (${usuario.email}) y enviado la confirmación de activación. ¡Prepárate para la aventura!',
+        icono: Icons.mark_email_read_outlined,
+        colorPrimario: AppTheme.verdeVida,
+        textoBoton: 'Iniciar Aventura',
+      );
+
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -284,8 +311,23 @@ class _RegistroScreenState extends State<RegistroScreen> {
                                   },
                             contentPadding: EdgeInsets.zero,
                             controlAffinity: ListTileControlAffinity.leading,
-                            title: const Text(
-                              'Acepto los términos y condiciones',
+                            title: Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                const Text('Acepto los '),
+                                InkWell(
+                                  onTap: () =>
+                                      TerminosCondicionesDialog.mostrar(context),
+                                  child: const Text(
+                                    'términos y condiciones',
+                                    style: TextStyle(
+                                      color: AppTheme.doradoCritico,
+                                      decoration: TextDecoration.underline,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           if (field.hasError)

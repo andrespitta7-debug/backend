@@ -66,6 +66,11 @@ class HttpAuthRepository implements AuthRepository {
 
   @override
   Future<Usuario?> obtenerPorId(String idUsuario) async {
+    if (await _tokenRepo.tokenExpirado()) {
+      await _tokenRepo.limpiarTokens();
+      return null;
+    }
+
     final accessToken = await _tokenRepo.obtenerAccessToken();
     if (accessToken == null) {
       return null;
@@ -79,6 +84,9 @@ class HttpAuthRepository implements AuthRepository {
         return null;
       }
       rethrow;
+    } catch (_) {
+      // Fallo de conectividad con Supabase no debe romper la carga inicial
+      return null;
     }
   }
 
