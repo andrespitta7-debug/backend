@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../combate/combate_screen.dart';
 import '../generar_quest/generar_quest_controller.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/dialogo_alerta.dart';
 
 class GenerarQuestScreen extends StatefulWidget {
   final String idUsuario;
@@ -54,22 +56,15 @@ class _GenerarQuestScreenState extends State<GenerarQuestScreen> {
       );
     } else if (controller.estado == GenerarQuestEstado.error &&
         controller.mensajeError != null) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(controller.mensajeError!),
-          duration: const Duration(seconds: 8),
-          action: SnackBarAction(
-            label: controller.puedeUsarFallback ? 'Respaldo' : 'Reintentar',
-            onPressed: () {
-              if (controller.puedeUsarFallback) {
-                _jugarQuestRespaldo();
-              } else {
-                _generarQuest();
-              }
-            },
-          ),
-        ),
+      DialogoAlertaSysQuest.mostrar(
+        context,
+        titulo: 'AVISO DE QUEST',
+        mensaje: controller.mensajeError!,
+        colorPrimario: AppTheme.doradoCritico,
+        textoBoton: controller.puedeUsarFallback ? 'Jugar Quest Curada' : 'Entendido',
+        onAceptar: controller.puedeUsarFallback ? _jugarQuestRespaldo : null,
+        textoBotonSecundario: controller.puedeUsarFallback ? 'Reintentar IA' : null,
+        onSecundario: controller.puedeUsarFallback ? _generarQuest : null,
       );
     }
   }

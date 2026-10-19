@@ -10,6 +10,7 @@ import '../../../domain/usecases/responder_encuentro_usecase.dart';
 import '../../../domain/entities/quest_completa.dart';
 import '../../../domain/entities/wildcard.dart';
 import '../../theme/app_theme.dart';
+import '../generar/generar_quest_screen.dart';
 import '../progreso/progreso_screen.dart';
 import 'combate_controller.dart';
 
@@ -248,6 +249,7 @@ class _CombateScreenState extends State<CombateScreen>
               onElegirOpcion: controller.elegirOpcion,
               onContinuar: controller.continuarSiguienteEncuentro,
               onVolverAJugar: _volverAJugar,
+              onCambiarTema: _jugarConOtroTema,
               onVerProgreso: _verProgreso,
               onDismissNarrativa: () {
                 setState(() {
@@ -344,7 +346,7 @@ class _CombateScreenState extends State<CombateScreen>
                     Navigator.of(dialogContext).pop();
                     await controller.retirarse();
                     if (!mounted) return;
-                    Navigator.of(this.context).popUntil((route) => route.isFirst);
+                    Navigator.of(this.context).pop();
                   },
                   icon: const Icon(Icons.exit_to_app),
                   label: const Text('Retirarse de la run'),
@@ -368,6 +370,15 @@ class _CombateScreenState extends State<CombateScreen>
       MaterialPageRoute(
         builder: (_) =>
             CombateScreen(idQuest: widget.idQuest, idUsuario: widget.idUsuario),
+      ),
+    );
+  }
+
+  void _jugarConOtroTema() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GenerarQuestScreen(idUsuario: widget.idUsuario),
       ),
     );
   }
@@ -396,6 +407,7 @@ class _CombateContenido extends StatelessWidget {
   final ValueChanged<OpcionEncuentro> onElegirOpcion;
   final VoidCallback onContinuar;
   final VoidCallback onVolverAJugar;
+  final VoidCallback onCambiarTema;
   final VoidCallback onVerProgreso;
   final VoidCallback onDismissNarrativa;
 
@@ -413,6 +425,7 @@ class _CombateContenido extends StatelessWidget {
     required this.onElegirOpcion,
     required this.onContinuar,
     required this.onVolverAJugar,
+    required this.onCambiarTema,
     required this.onVerProgreso,
     required this.onDismissNarrativa,
   });
@@ -492,6 +505,7 @@ class _CombateContenido extends StatelessWidget {
             _FinCombate(
               controller: controller,
               onVolverAJugar: onVolverAJugar,
+              onCambiarTema: onCambiarTema,
               onVerProgreso: onVerProgreso,
             )
           else ...[
@@ -1202,11 +1216,13 @@ class _EventoDecisionCard extends StatelessWidget {
 class _FinCombate extends StatelessWidget {
   final CombateController controller;
   final VoidCallback onVolverAJugar;
+  final VoidCallback onCambiarTema;
   final VoidCallback onVerProgreso;
 
   const _FinCombate({
     required this.controller,
     required this.onVolverAJugar,
+    required this.onCambiarTema,
     required this.onVerProgreso,
   });
 
@@ -1240,6 +1256,16 @@ class _FinCombate extends StatelessWidget {
           ElevatedButton(
             onPressed: onVolverAJugar,
             child: const Text('Volver a jugar'),
+          ),
+          const SizedBox(height: 10),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.verdeVida,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: onCambiarTema,
+            icon: const Icon(Icons.auto_awesome, size: 18),
+            label: const Text('Volver a Jugar con otro tema'),
           ),
           const SizedBox(height: 10),
           OutlinedButton(

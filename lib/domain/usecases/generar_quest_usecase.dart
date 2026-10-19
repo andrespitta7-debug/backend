@@ -60,7 +60,8 @@ class GenerarQuestUseCase {
         'El título de la quest no puede estar vacío.',
       );
     }
-    if (quest.fuenteGeneracion != 'ia') {
+    final fuente = quest.fuenteGeneracion.trim().toLowerCase();
+    if (fuente != 'ia' && fuente != 'fallback') {
       throw QuestInvalidaException('La fuente de generación debe ser ia.');
     }
     if (!_categoriasValidas.contains(quest.categoria)) {
