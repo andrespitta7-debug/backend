@@ -8,6 +8,7 @@ import '../auth/auth_controller.dart';
 import '../auth/login_screen.dart';
 import '../combate/combate_screen.dart';
 import '../generar/generar_quest_screen.dart';
+import '../mapa/mapa_mundo_screen.dart';
 import '../perfil/perfil_screen.dart';
 import '../progreso/progreso_screen.dart';
 
@@ -68,15 +69,25 @@ class MenuPrincipalScreen extends StatelessWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _MenuCard(
-                    icon: Icons.shield_outlined,
+                    icon: Icons.map_outlined,
                     accent: AppTheme.doradoCritico,
-                    title: 'Quest del sistema',
+                    title: 'Mapa de aventura',
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => CombateScreen(
-                          idQuest: '00000000-0000-0000-0000-000000000001',
+                        builder: (_) => MapaMundo2DScreen(
                           idUsuario: usuario.idUsuario,
+                          onSeleccionarQuest: (idQuest) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CombateScreen(
+                                  idQuest: idQuest,
+                                  idUsuario: usuario.idUsuario,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ),
