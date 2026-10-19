@@ -65,13 +65,10 @@ Future<void> main() async {
   final QuestGeneratorRepository questGenerator;
 
   if (usarBackendRemoto) {
-    const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
-    if (anonKey.isEmpty) {
-      throw StateError(
-        'Falta configurar la clave anónima de Supabase. '
-        'Pasar al ejecutar: --dart-define=SUPABASE_ANON_KEY=<tu_anon_key>',
-      );
-    }
+    const anonKey = String.fromEnvironment(
+      'SUPABASE_ANON_KEY',
+      defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
+    );
     const supabaseUrl = String.fromEnvironment(
       'SUPABASE_URL',
       defaultValue: 'https://jctulgfdweeurqbmugot.supabase.co',
@@ -208,18 +205,36 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _restaurarSesion() async {
-    final usuario = await context.read<RestaurarSesionUseCase>().ejecutar();
-    if (!mounted) return;
-    setState(() {
-      _usuario = usuario;
-      _restaurando = false;
-    });
+    try {
+      final usuario = await context
+          .read<RestaurarSesionUseCase>()
+          .ejecutar()
+          .timeout(const Duration(seconds: 2));
+      if (!mounted) return;
+      setState(() {
+        _usuario = usuario;
+        _restaurando = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _usuario = null;
+        _restaurando = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_restaurando) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: AppTheme.fondoNoche,
+        body: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation(AppTheme.verdeVida),
+          ),
+        ),
+      );
     }
     if (_usuario == null) return const LoginScreen();
     return MenuPrincipalScreen(usuario: _usuario!);
