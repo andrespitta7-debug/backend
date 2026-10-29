@@ -47,6 +47,11 @@ class FakePartidaRepository implements PartidaRepository {
 }
 
 class FakeQuestGeneratorRepository implements QuestGeneratorRepository {
+  String? ultimoTema;
+  String? ultimaCategoria;
+  String? ultimaDificultad;
+  int? ultimoNumero;
+
   @override
   Future<QuestCompleta> generarQuest(String tema) async {
     throw UnimplementedError();
@@ -60,6 +65,10 @@ class FakeQuestGeneratorRepository implements QuestGeneratorRepository {
     required String dificultad,
     required int ultimoNumero,
   }) async {
+    ultimoTema = tema;
+    ultimaCategoria = categoria;
+    ultimaDificultad = dificultad;
+    this.ultimoNumero = ultimoNumero;
     return [];
   }
 }
@@ -989,6 +998,73 @@ void main() {
       expect(controller.esFinDeRonda, isTrue);
       // Fin de ronda: no hay evento intermedio, se muestra el Altar de Ronda
       expect(controller.eventoActivo, isNull);
+    });
+
+    test('cargarQuest asigna valores de fallback cuando se pasan vacíos o tema < 3 chars', () async {
+      final repoQuest = FakeQuestRepository([encuentroNormal1]);
+      final repoPartida = FakePartidaRepository();
+      final fakeGenerator = FakeQuestGeneratorRepository();
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(repoPartida),
+        GenerarEncuentrosExtraUseCase(fakeGenerator),
+        duracionPausaTurno: const Duration(milliseconds: 10),
+      );
+
+      // 1. Cargar con valores vacíos por defecto
+      await controller.cargarQuest('q-1', 'u-1');
+      expect(controller.temaQuest, equals('Aventura General'));
+      expect(controller.categoriaQuest, equals('libre'));
+      expect(controller.dificultadQuest, equals('facil'));
+
+      // 2. Cargar con tema menor a 3 caracteres y espacios
+      await controller.cargarQuest(
+        'q-1',
+        'u-1',
+        temaQuest: '  ab  ',
+        categoriaQuest: '   ',
+        dificultadQuest: '   ',
+      );
+      expect(controller.temaQuest, equals('Aventura General'));
+      expect(controller.categoriaQuest, equals('libre'));
+      expect(controller.dificultadQuest, equals('facil'));
+
+      // 3. Cargar con valores válidos explícitos
+      await controller.cargarQuest(
+        'q-1',
+        'u-1',
+        temaQuest: 'Bases de Datos',
+        categoriaQuest: 'sql',
+        dificultadQuest: 'medio',
+      );
+      expect(controller.temaQuest, equals('Bases de Datos'));
+      expect(controller.categoriaQuest, equals('sql'));
+      expect(controller.dificultadQuest, equals('medio'));
+    });
+
+    test('cargarQuest con fallbacks envía tema y categoría válidos al solicitar más encuentros', () async {
+      final repoQuest = FakeQuestRepository([encuentroNormal1]);
+      final repoPartida = FakePartidaRepository();
+      final fakeGenerator = FakeQuestGeneratorRepository();
+      final controller = CombateController(
+        repoQuest,
+        ResponderEncuentroUseCase(),
+        FinalizarPartidaUseCase(repoPartida),
+        GenerarEncuentrosExtraUseCase(fakeGenerator),
+        duracionPausaTurno: const Duration(milliseconds: 10),
+      );
+
+      // Cargar quest sin tema ni categoría (ej. quest del sistema)
+      await controller.cargarQuest('q-1', 'u-1');
+
+      // Vencer al enemigo para agotar preguntas y disparar solicitud de más encuentros
+      await controller.elegirOpcion(opcionCritica);
+
+      // Debe haber llamado a generarEncuentrosExtra con los valores de fallback
+      expect(fakeGenerator.ultimoTema, equals('Aventura General'));
+      expect(fakeGenerator.ultimaCategoria, equals('libre'));
+      expect(fakeGenerator.ultimaDificultad, equals('facil'));
     });
   });
 }

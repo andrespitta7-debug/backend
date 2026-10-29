@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_theme.dart';
+import '../../core/design_system/sysquest_theme.dart';
+import '../../core/design_system/widgets/retro_panel_box.dart';
+import '../../core/design_system/widgets/retro_pixel_button.dart';
 import '../../../domain/entities/wildcard.dart';
 
-/// Diálogo interactivo para la Tienda del Mercader del Overworld 2D
+/// Diálogo interactivo 16-bit retro para la Tienda del Mercader del Overworld 2D
 class MercaderTiendaDialog extends StatefulWidget {
   final int scoreDisponible;
   final Map<TipoWildcard, int> inventarioActual;
@@ -23,6 +25,8 @@ class MercaderTiendaDialog extends StatefulWidget {
   }) {
     return showDialog(
       context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       builder: (ctx) => MercaderTiendaDialog(
         scoreDisponible: scoreDisponible,
         inventarioActual: inventarioActual,
@@ -50,8 +54,13 @@ class _MercaderTiendaDialogState extends State<MercaderTiendaDialog> {
     if (_score < costo) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('¡Oro/Puntos insuficientes para comprar $nombre!'),
-          backgroundColor: AppTheme.rojoDanio,
+          content: Text(
+            '¡Oro insuficiente para comprar $nombre!',
+            style: SysQuestTypography.caption.copyWith(
+              color: SysQuestColors.parchmentText,
+            ),
+          ),
+          backgroundColor: SysQuestColors.lifeRed,
           duration: const Duration(seconds: 2),
         ),
       );
@@ -67,8 +76,13 @@ class _MercaderTiendaDialogState extends State<MercaderTiendaDialog> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('¡Compraste 1x $nombre por $costo pts!'),
-        backgroundColor: AppTheme.verdeVida,
+        content: Text(
+          '¡Compraste 1x $nombre por $costo pts!',
+          style: SysQuestTypography.caption.copyWith(
+            color: SysQuestColors.dungeonVoid,
+          ),
+        ),
+        backgroundColor: SysQuestColors.gold,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -78,164 +92,172 @@ class _MercaderTiendaDialogState extends State<MercaderTiendaDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 550),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF16152B),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.purpleAccent, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.purpleAccent.withValues(alpha: 0.3),
-              blurRadius: 28,
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Cabecera Mercader
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.purpleAccent.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.purpleAccent, width: 2),
-                  ),
-                  child: const Text('🧙‍♂️', style: TextStyle(fontSize: 26)),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'TIENDA DEL MERCADER',
-                        style: TextStyle(
-                          fontFamily: 'PressStart2P',
-                          fontSize: 11,
-                          color: Colors.purpleAccent,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '¡Intercambia tus puntos por mejoras tácticas!',
-                        style: TextStyle(
-                          color: AppTheme.azulTexto.withValues(alpha: 0.8),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, color: Colors.white70),
-                )
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Balance de oro / score
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.black45,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppTheme.doradoCritico.withValues(alpha: 0.5)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: RetroPanelBox(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Cabecera Mercader
+              Row(
                 children: [
-                  const Text(
-                    '🪙 ORO / PUNTOS:',
-                    style: TextStyle(
-                      fontFamily: 'PressStart2P',
-                      fontSize: 10,
-                      color: AppTheme.doradoCritico,
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: SysQuestColors.dungeonVoid,
+                      border: Border.all(
+                        color: SysQuestColors.gold,
+                        width: 2,
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: Image.asset(
+                      'assets/sprites/frames/wizzard_m_idle_anim_f0.png',
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.none,
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.storefront,
+                        color: SysQuestColors.gold,
+                        size: 24,
+                      ),
                     ),
                   ),
-                  Text(
-                    '$_score pts',
-                    style: const TextStyle(
-                      fontFamily: 'PressStart2P',
-                      fontSize: 10,
-                      color: AppTheme.doradoCritico,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'TIENDA DEL MERCADER',
+                          style: SysQuestTypography.h3.copyWith(
+                            color: SysQuestColors.gold,
+                            fontSize: 11,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Mejoras tácticas para tu run.',
+                          style: SysQuestTypography.caption.copyWith(
+                            color: SysQuestColors.parchmentText
+                                .withValues(alpha: 0.8),
+                            fontSize: 8,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(
+                      Icons.close,
+                      color: SysQuestColors.parchmentText,
+                      size: 20,
+                    ),
+                  )
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
-            // Lista de Artículos
-            _ArticuloMercader(
-              icono: '💡',
-              nombre: 'Pergamino de Pistas',
-              descripcion: 'Muestra la explicación teórica o pista para la pregunta actual.',
-              costo: 100,
-              cantidad: _inventario[TipoWildcard.pista] ?? 0,
-              onComprar: () => _intentarComprar(
-                TipoWildcard.pista,
-                100,
-                'Pergamino de Pistas',
-              ),
-            ),
-            const SizedBox(height: 10),
-            _ArticuloMercader(
-              icono: '⚔️',
-              nombre: 'Filo Crítico (Golpe Doble)',
-              descripcion: 'Duplica el daño que infliges al enemigo en tu siguiente acierto.',
-              costo: 150,
-              cantidad: _inventario[TipoWildcard.golpeDoble] ?? 0,
-              onComprar: () => _intentarComprar(
-                TipoWildcard.golpeDoble,
-                150,
-                'Filo Crítico',
-              ),
-            ),
-            const SizedBox(height: 10),
-            _ArticuloMercader(
-              icono: '❤️',
-              nombre: 'Poción Vampírica (Robo de Vida)',
-              descripcion: 'Restaura tus puntos de vida equivalentes al daño infligido.',
-              costo: 200,
-              cantidad: _inventario[TipoWildcard.roboDeVida] ?? 0,
-              onComprar: () => _intentarComprar(
-                TipoWildcard.roboDeVida,
-                200,
-                'Poción Vampírica',
-              ),
-            ),
-            const SizedBox(height: 10),
-            _ArticuloMercader(
-              icono: '🎯',
-              nombre: 'Orbe 50/50',
-              descripcion: 'Descarta 2 opciones incorrectas inmediatamente.',
-              costo: 120,
-              cantidad: _inventario[TipoWildcard.cincuentaCincuenta] ?? 0,
-              onComprar: () => _intentarComprar(
-                TipoWildcard.cincuentaCincuenta,
-                120,
-                'Orbe 50/50',
-              ),
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-              height: 44,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purpleAccent,
-                  foregroundColor: Colors.white,
+              const SizedBox(height: 14),
+
+              // Balance de oro / score
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: SysQuestColors.dungeonVoid,
+                  border: Border.all(
+                    color: SysQuestColors.stoneHighlight,
+                    width: 2,
+                  ),
                 ),
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Regresar al Mapa', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'ORO / PUNTOS:',
+                      style: SysQuestTypography.caption.copyWith(
+                        color: SysQuestColors.gold,
+                        fontSize: 9,
+                      ),
+                    ),
+                    Text(
+                      '$_score PTS',
+                      style: SysQuestTypography.caption.copyWith(
+                        color: SysQuestColors.gold,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 14),
+
+              // Lista de Artículos
+              _ArticuloMercader(
+                spriteAsset: 'assets/sprites/frames/skull.png',
+                nombre: 'Pergamino de Pistas',
+                descripcion: 'Revela la explicación teórica de la pregunta.',
+                costo: 100,
+                cantidad: _inventario[TipoWildcard.pista] ?? 0,
+                onComprar: () => _intentarComprar(
+                  TipoWildcard.pista,
+                  100,
+                  'Pergamino de Pistas',
+                ),
+              ),
+              const SizedBox(height: 8),
+              _ArticuloMercader(
+                spriteAsset: 'assets/sprites/frames/weapon_waraxe.png',
+                nombre: 'Filo Crítico (Golpe Doble)',
+                descripcion: 'Duplica tu daño en el siguiente acierto.',
+                costo: 150,
+                cantidad: _inventario[TipoWildcard.golpeDoble] ?? 0,
+                onComprar: () => _intentarComprar(
+                  TipoWildcard.golpeDoble,
+                  150,
+                  'Filo Crítico',
+                ),
+              ),
+              const SizedBox(height: 8),
+              _ArticuloMercader(
+                spriteAsset: 'assets/sprites/frames/flask_big_green.png',
+                nombre: 'Poción Vampírica',
+                descripcion: 'Restaura vida equivalente al daño infligido.',
+                costo: 200,
+                cantidad: _inventario[TipoWildcard.roboDeVida] ?? 0,
+                onComprar: () => _intentarComprar(
+                  TipoWildcard.roboDeVida,
+                  200,
+                  'Poción Vampírica',
+                ),
+              ),
+              const SizedBox(height: 8),
+              _ArticuloMercader(
+                spriteAsset: 'assets/sprites/frames/weapon_knife.png',
+                nombre: 'Orbe 50/50',
+                descripcion: 'Descarta 2 opciones incorrectas.',
+                costo: 120,
+                cantidad: _inventario[TipoWildcard.cincuentaCincuenta] ?? 0,
+                onComprar: () => _intentarComprar(
+                  TipoWildcard.cincuentaCincuenta,
+                  120,
+                  'Orbe 50/50',
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Botón Volver
+              RetroPixelButton(
+                text: 'REGRESAR AL MAPA',
+                color: SysQuestColors.manaCyan,
+                textColor: SysQuestColors.dungeonVoid,
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -243,7 +265,7 @@ class _MercaderTiendaDialogState extends State<MercaderTiendaDialog> {
 }
 
 class _ArticuloMercader extends StatelessWidget {
-  final String icono;
+  final String spriteAsset;
   final String nombre;
   final String descripcion;
   final int costo;
@@ -251,7 +273,7 @@ class _ArticuloMercader extends StatelessWidget {
   final VoidCallback onComprar;
 
   const _ArticuloMercader({
-    required this.icono,
+    required this.spriteAsset,
     required this.nombre,
     required this.descripcion,
     required this.costo,
@@ -262,16 +284,36 @@ class _ArticuloMercader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF221F3B),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.35)),
+        color: SysQuestColors.dungeonVoid,
+        border: Border.all(
+          color: SysQuestColors.stoneHighlight,
+          width: 2,
+        ),
       ),
       child: Row(
         children: [
-          Text(icono, style: const TextStyle(fontSize: 28)),
-          const SizedBox(width: 12),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: SysQuestColors.stonePanel,
+              border: Border.all(color: SysQuestColors.borderBlack, width: 2),
+            ),
+            padding: const EdgeInsets.all(4),
+            child: Image.asset(
+              spriteAsset,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.none,
+              errorBuilder: (_, _, _) => const Icon(
+                Icons.auto_awesome,
+                color: SysQuestColors.gold,
+                size: 16,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,18 +323,17 @@ class _ArticuloMercader extends StatelessWidget {
                     Expanded(
                       child: Text(
                         nombre,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                        style: SysQuestTypography.body.copyWith(
+                          fontSize: 8,
+                          color: SysQuestColors.parchmentText,
                         ),
                       ),
                     ),
                     Text(
-                      'Posees: $cantidad',
-                      style: const TextStyle(
-                        color: Colors.white60,
-                        fontSize: 10,
+                      'x$cantidad',
+                      style: SysQuestTypography.caption.copyWith(
+                        color: SysQuestColors.manaCyan,
+                        fontSize: 8,
                       ),
                     ),
                   ],
@@ -300,27 +341,22 @@ class _ArticuloMercader extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   descripcion,
-                  style: TextStyle(
-                    color: AppTheme.azulTexto.withValues(alpha: 0.8),
-                    fontSize: 11,
+                  style: SysQuestTypography.caption.copyWith(
+                    color: SysQuestColors.parchmentText.withValues(alpha: 0.75),
+                    fontSize: 7,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.doradoCritico,
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              minimumSize: const Size(60, 36),
-            ),
+          const SizedBox(width: 8),
+          RetroPixelButton(
+            text: '$costo',
+            height: 32,
+            width: 78,
+            color: SysQuestColors.gold,
+            textColor: SysQuestColors.dungeonVoid,
             onPressed: onComprar,
-            child: Text(
-              '$costo pts',
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-            ),
           ),
         ],
       ),

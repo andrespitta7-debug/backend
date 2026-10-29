@@ -9,7 +9,7 @@ import '../../domain/entities/quest_completa.dart';
 import '../../domain/repositories/quest_generator_repository.dart';
 import '../../domain/repositories/token_repository.dart';
 import 'api_exception.dart';
-import 'http_quest_repository.dart';
+
 
 /// Implementación HTTP de [QuestGeneratorRepository] que se comunica
 /// con la Edge Function `generar-quest` de Supabase.

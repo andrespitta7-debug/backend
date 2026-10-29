@@ -17,6 +17,10 @@ import '../../widgets/battle_fighter.dart';
 import '../../widgets/battle_stage.dart';
 import '../../widgets/enemy_damage_wrapper.dart';
 import 'combate_controller.dart';
+import '../../core/design_system/sysquest_theme.dart';
+import '../../core/design_system/widgets/pixel_icon.dart';
+import '../../core/design_system/widgets/retro_panel_box.dart';
+import '../../core/design_system/widgets/retro_pixel_button.dart';
 
 class CombateScreen extends StatefulWidget {
   final String idQuest;
@@ -479,116 +483,224 @@ class _CombateContenido extends StatelessWidget {
     required this.onDismissNarrativa,
   });
 
+  void _mostrarConsolaCompleta(
+    BuildContext context,
+    List<String> historial,
+  ) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.75),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 550, maxHeight: 500),
+          child: RetroPanelBox(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'CONSOLA DE EVENTOS',
+                      style: SysQuestTypography.h3.copyWith(
+                        color: SysQuestColors.gold,
+                        fontSize: 10,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close,
+                        color: SysQuestColors.parchmentText,
+                        size: 18,
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+                const Divider(color: SysQuestColors.stoneHighlight),
+                Expanded(
+                  child: _ConsolaNarrativa(historial: historial),
+                ),
+                const SizedBox(height: 10),
+                RetroPixelButton(
+                  text: 'CERRAR',
+                  height: 36,
+                  color: SysQuestColors.stonePanel,
+                  textColor: SysQuestColors.parchmentText,
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+    if (controller.mensajeNarrativoActual != null) {
+      return SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: _PanelNarrativo(
+              texto: controller.mensajeNarrativoActual!,
+              onContinuar: onDismissNarrativa,
+            ),
+          ),
+        ),
+      );
+    } else if (controller.encuentroSuperado) {
+      return SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: controller.eventoActivo != null && !controller.esFinDeRonda
+                ? _EventoDecisionCard(
+                    evento: controller.eventoActivo!,
+                    visualScene: controller.eventoActualVisual?.visualScene,
+                    vidaActual: controller.vidaJugador,
+                    onSeleccionar: controller.resolverEventoDecision,
+                  )
+                : _RondaSuperada(
+                    rondaActual: controller.ronda,
+                    vidaActual: controller.vidaJugador,
+                    onDescansoSeguro: () =>
+                        controller.continuarSiguienteRonda(temerario: false),
+                    onPactoTemerario: () =>
+                        controller.continuarSiguienteRonda(temerario: true),
+                    onRetirarseConBotin: () => controller.retirarse(),
+                  ),
+          ),
+        ),
+      );
+    } else if (controller.combateTerminado) {
+      return SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: _FinCombate(
+            controller: controller,
+            onVolverAJugar: onVolverAJugar,
+            onCambiarTema: onCambiarTema,
+            onVerProgreso: onVerProgreso,
+          ),
+        ),
+      );
+    }
+
+    // COMBATE ACTIVO: ZERO-SCROLL ESTRICTO
+    return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (controller.rachaActual >= 3)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Center(
-                child: _IndicadorRacha(racha: controller.rachaActual),
-              ),
-            ),
-          if (controller.modoTemerarioActivo)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppTheme.rojoDanio.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppTheme.rojoDanio, width: 2),
-                  ),
-                  child: const Text(
-                    '💀 MODO TEMERARIO ACTIVO (+30% DAÑO | +200 PTS)',
-                    style: TextStyle(
-                      fontFamily: 'PressStart2P',
-                      fontSize: 8,
-                      color: AppTheme.rojoDanio,
+          // 1. Arena de Combate (Altura fija 220px)
+          SizedBox(
+            height: 220,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned.fill(
+                  child: BattleStage(
+                    playerActor: BattleFighterWidget(
+                      key: playerFighterKey,
+                      characterPrefix: 'knight_m',
+                      weaponSprite: 'weapon_knight_sword.png',
+                      isEnemy: false,
                     ),
-                    textAlign: TextAlign.center,
+                    enemyActor: EnemyDamageAndDeathWrapper(
+                      isHit: enemigoRecibioGolpe,
+                      isDead: enemigoMuerto,
+                      child: BattleFighterWidget(
+                        key: enemyFighterKey,
+                        characterPrefix:
+                            encuentro.esJefe ? 'big_demon' : 'goblin',
+                        weaponSprite: encuentro.esJefe
+                            ? 'weapon_cleaver.png'
+                            : 'weapon_knife.png',
+                        isEnemy: true,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          _EnemigoCard(
-            categoria: categoria,
-            nombre: 'Encuentro ${encuentro.numero}',
-            vida: controller.vidaEnemigo,
-            vidaMaxima: encuentro.vidaEnemigo,
-            esJefe: encuentro.esJefe,
-            temblor: temblorEnemigo,
-            destello: destelloCritico,
-            danio: danioEnemigo,
-            danioKey: danioEnemigoKey,
-          ),
-          const SizedBox(height: 16),
-          if (controller.mensajeNarrativoActual != null)
-            _PanelNarrativo(
-              texto: controller.mensajeNarrativoActual!,
-              onContinuar: onDismissNarrativa,
-            )
-          else if (controller.encuentroSuperado)
-            if (controller.eventoActivo != null && !controller.esFinDeRonda)
-              _EventoDecisionCard(
-                evento: controller.eventoActivo!,
-                visualScene: controller.eventoActualVisual?.visualScene,
-                vidaActual: controller.vidaJugador,
-                onSeleccionar: controller.resolverEventoDecision,
-              )
-            else
-              _RondaSuperada(
-                rondaActual: controller.ronda,
-                vidaActual: controller.vidaJugador,
-                onDescansoSeguro: () =>
-                    controller.continuarSiguienteRonda(temerario: false),
-                onPactoTemerario: () =>
-                    controller.continuarSiguienteRonda(temerario: true),
-                onRetirarseConBotin: () => controller.retirarse(),
-              )
-          else if (controller.combateTerminado)
-            _FinCombate(
-              controller: controller,
-              onVolverAJugar: onVolverAJugar,
-              onCambiarTema: onCambiarTema,
-              onVerProgreso: onVerProgreso,
-            )
-          else ...[
-            BattleStage(
-              playerActor: BattleFighterWidget(
-                key: playerFighterKey,
-                characterPrefix: 'knight_m',
-                weaponSprite: 'weapon_knight_sword.png',
-                isEnemy: false,
-              ),
-              enemyActor: EnemyDamageAndDeathWrapper(
-                isHit: enemigoRecibioGolpe,
-                isDead: enemigoMuerto,
-                child: BattleFighterWidget(
-                  key: enemyFighterKey,
-                  characterPrefix: encuentro.esJefe ? 'big_demon' : 'goblin',
-                  weaponSprite: encuentro.esJefe
-                      ? 'weapon_cleaver.png'
-                      : 'weapon_knife.png',
-                  isEnemy: true,
+
+                // Arriba a la derecha: Barra de vida del enemigo (primero en árbol para barras.at(0))
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: _BarraVidaEnemigoCompacta(
+                    vida: controller.vidaEnemigo,
+                    vidaMaxima: encuentro.vidaEnemigo,
+                    danio: danioEnemigo,
+                    danioKey: danioEnemigoKey,
+                  ),
                 ),
-              ),
+
+                // Arriba a la izquierda: Barra de vida del héroe (segundo en árbol para barras.at(1))
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: _BarraVidaHeroeCompacta(
+                    vida: controller.vidaJugador,
+                    danio: danioJugador,
+                    danioKey: danioJugadorKey,
+                  ),
+                ),
+
+                // Badge Temerario si aplica
+                if (controller.modoTemerarioActivo)
+                  Positioned(
+                    top: 8,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color:
+                              SysQuestColors.dungeonVoid.withValues(alpha: 0.85),
+                          border:
+                              Border.all(color: SysQuestColors.lifeRed, width: 2),
+                        ),
+                        child: Text(
+                          'TEMERARIO x2',
+                          style: SysQuestTypography.caption.copyWith(
+                            color: SysQuestColors.lifeRed,
+                            fontSize: 7,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Ticker abajo (28px)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 28,
+                  child: _TickerNarrativoArena(
+                    ultimoMensaje: controller.historialNarrativo.isNotEmpty
+                        ? controller.historialNarrativo.last
+                        : 'El combate ha comenzado...',
+                    onTap: () => _mostrarConsolaCompleta(
+                      context,
+                      controller.historialNarrativo,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            _DialogoPregunta(pregunta: encuentro.pregunta),
-            const SizedBox(height: 16),
-            _BarraVidaJugador(
-              valor: controller.vidaJugador,
-              danio: danioJugador,
-              danioKey: danioJugadorKey,
-            ),
-            const SizedBox(height: 16),
-            _FilaWildcards(
+          ),
+
+          // 2. Fila de Comodines (Altura fija 60px)
+          SizedBox(
+            height: 60,
+            child: _FilaWildcardsZeroScroll(
               wildcards: controller.wildcards,
               pistaActiva: controller.pistaActiva,
               golpeDobleActivo: controller.golpeDobleActivo,
@@ -596,294 +708,108 @@ class _CombateContenido extends StatelessWidget {
               turnoEnProceso: turnoEnProceso,
               onUsarWildcard: controller.usarWildcard,
             ),
-            const SizedBox(height: 16),
-            if (controller.pistaActiva != null)
-              Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.doradoCritico.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.doradoCritico.withValues(alpha: 0.5)),
-                ),
-                child: Row(
-                  children: [
-                    const Text('💡', style: TextStyle(fontSize: 20)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        controller.pistaActiva!,
-                        style: const TextStyle(
-                          color: AppTheme.doradoCritico,
-                          fontStyle: FontStyle.italic,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ...encuentro.opciones
-                .where((op) => !controller.opcionesOcultas.contains(op.texto))
-                .map(
-              (opcion) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _OpcionButton(
-                  letra: opcion.letra,
-                  texto: opcion.texto,
-                  onPressed: turnoEnProceso
-                      ? null
-                      : () => onElegirOpcion(opcion),
-                ),
-              ),
-            ),
-            if (turnoEnProceso)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
+          ),
+
+          // 3. Pregunta (Expanded flex: 4)
+          Expanded(
+            flex: 4,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: RetroPanelBox(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Center(
-                  child: Text(
-                    'Resolviendo turno...',
-                    style: TextStyle(
-                      fontFamily: 'PressStart2P',
-                      fontSize: 10,
-                      color: AppTheme.azulTexto,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (controller.pistaActiva != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            margin: const EdgeInsets.only(bottom: 6),
+                            decoration: BoxDecoration(
+                              color: SysQuestColors.dungeonVoid,
+                              border: Border.all(
+                                  color: SysQuestColors.gold, width: 1.5),
+                            ),
+                            child: Text(
+                              'PISTA: ${controller.pistaActiva}',
+                              style: SysQuestTypography.caption.copyWith(
+                                color: SysQuestColors.gold,
+                                fontSize: 8,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                        Text(
+                          encuentro.pregunta,
+                          style: SysQuestTypography.body.copyWith(
+                            color: SysQuestColors.parchmentText,
+                            fontSize: 10,
+                            height: 1.35,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-            if (controller.mensajeUltimoTurno != null)
-              _MensajeTurno(texto: controller.mensajeUltimoTurno!),
+            ),
+          ),
 
-            // Consola narrativa (estilo Dwarf Fortress)
-            const SizedBox(height: 16),
-            _ConsolaNarrativa(historial: controller.historialNarrativo),
-          ],
+          // 4. Opciones (Expanded flex: 6)
+          Expanded(
+            flex: 6,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+              child: Column(
+                children: encuentro.opciones.map((opcion) {
+                  final descartada =
+                      controller.opcionesOcultas.contains(opcion.texto);
+
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.5),
+                      child: descartada
+                          ? const RetroPixelButton(
+                              text: '--- DESCARTADA ---',
+                              height: null,
+                              enabled: false,
+                              color: SysQuestColors.dungeonVoid,
+                              textColor: SysQuestColors.disabledGray,
+                            )
+                          : RetroPixelButton(
+                              text: '${opcion.letra}  ${opcion.texto}',
+                              height: null,
+                              enabled: !turnoEnProceso,
+                              color: SysQuestColors.stonePanel,
+                              textColor: SysQuestColors.parchmentText,
+                              onPressed: turnoEnProceso
+                                  ? null
+                                  : () => onElegirOpcion(opcion),
+                            ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _EnemigoCard extends StatefulWidget {
-  final String? categoria;
-  final String nombre;
+class _BarraVidaHeroeCompacta extends StatelessWidget {
   final int vida;
-  final int vidaMaxima;
-  final bool esJefe;
-  final AnimationController temblor;
-  final AnimationController destello;
   final int? danio;
   final int danioKey;
 
-  const _EnemigoCard({
-    required this.categoria,
-    required this.nombre,
+  const _BarraVidaHeroeCompacta({
     required this.vida,
-    required this.vidaMaxima,
-    required this.esJefe,
-    required this.temblor,
-    required this.destello,
-    required this.danio,
-    required this.danioKey,
-  });
-
-  @override
-  State<_EnemigoCard> createState() => _EnemigoCardState();
-}
-
-class _EnemigoCardState extends State<_EnemigoCard> with TickerProviderStateMixin {
-  late final AnimationController _flashDanio;
-  late final AnimationController _particulasController;
-  int _danioKeyAnterior = -1;
-
-  @override
-  void initState() {
-    super.initState();
-    _flashDanio = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _particulasController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-  }
-
-  @override
-  void didUpdateWidget(_EnemigoCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.vida != oldWidget.vida) {
-      setState(() {});
-    }
-    if (widget.danioKey != oldWidget.danioKey && widget.danio != null && widget.danio! > 0) {
-      if (widget.danioKey != _danioKeyAnterior) {
-        _danioKeyAnterior = widget.danioKey;
-        _flashDanio.forward(from: 0.0).then((_) => _flashDanio.reverse());
-        _particulasController.forward(from: 0.0);
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _flashDanio.dispose();
-    _particulasController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final borde = widget.esJefe ? AppTheme.doradoCritico : AppTheme.superficieElevada;
-    return AnimatedBuilder(
-      animation: Listenable.merge([widget.temblor, widget.destello, _flashDanio, _particulasController]),
-      builder: (context, child) {
-        final desplazamiento = math.sin(widget.temblor.value * math.pi * 12) * 5;
-        final brillo = widget.destello.value;
-        
-        Color colorFondo = Color.lerp(
-          AppTheme.superficieNoche,
-          AppTheme.doradoCritico.withValues(alpha: 0.25),
-          brillo,
-        )!;
-
-        if (_flashDanio.value > 0) {
-          colorFondo = Color.lerp(
-            colorFondo,
-            Colors.red.withValues(alpha: 0.5),
-            _flashDanio.value,
-          )!;
-        }
-
-        return Transform.translate(
-          offset: Offset(desplazamiento, 0),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: colorFondo,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: borde, width: widget.esJefe ? 3 : 2),
-              boxShadow: widget.esJefe
-                  ? [
-                      BoxShadow(
-                        color: AppTheme.doradoCritico.withValues(alpha: 0.25),
-                        blurRadius: 18,
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            _iconoCategoria(widget.categoria),
-                            style: const TextStyle(fontSize: 48),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        widget.nombre,
-                                        style: Theme.of(context).textTheme.titleLarge,
-                                      ),
-                                    ),
-                                    if (widget.esJefe) const _EtiquetaJefe(),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                _BarraVida(
-                                  etiqueta: 'VIDA',
-                                  valor: widget.vida,
-                                  maximo: widget.vidaMaxima,
-                                  color: AppTheme.rojoDanio,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (widget.danio != null)
-                        Positioned(
-                          right: 20,
-                          top: -8,
-                          child: _NumeroDanio(
-                            key: ValueKey(widget.danioKey),
-                            valor: widget.danio!,
-                            color: AppTheme.rojoDanio,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (_particulasController.isAnimating)
-                  ..._generarParticulas(),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  List<Widget> _generarParticulas() {
-    final progreso = _particulasController.value;
-    final opacidad = 1.0 - progreso;
-    final radio = 40.0 * Curves.easeOut.transform(progreso);
-    
-    return List.generate(6, (i) {
-      final angulo = i * (math.pi * 2 / 6);
-      final dx = math.cos(angulo) * radio;
-      final dy = math.sin(angulo) * radio;
-      
-      return Positioned(
-        left: 40 + dx, // Centro aproximado del icono
-        top: 40 + dy,
-        child: Opacity(
-          opacity: opacidad,
-          child: const Text('💥', style: TextStyle(fontSize: 14)),
-        ),
-      );
-    });
-  }
-}
-
-class _DialogoPregunta extends StatelessWidget {
-  final String pregunta;
-  const _DialogoPregunta({required this.pregunta});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppTheme.superficieElevada,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppTheme.doradoCritico.withValues(alpha: 0.7),
-        ),
-      ),
-      child: Text(pregunta, style: Theme.of(context).textTheme.titleMedium),
-    );
-  }
-}
-
-class _BarraVidaJugador extends StatelessWidget {
-  final int valor;
-  final int? danio;
-  final int danioKey;
-
-  const _BarraVidaJugador({
-    required this.valor,
     required this.danio,
     required this.danioKey,
   });
@@ -893,20 +819,51 @@ class _BarraVidaJugador extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        _BarraVida(
-          etiqueta: 'TU VIDA  $valor/100',
-          valor: valor,
-          maximo: 100,
-          color: AppTheme.verdeVida,
+        Container(
+          width: 140,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: SysQuestColors.dungeonVoid.withValues(alpha: 0.85),
+            border: Border.all(color: SysQuestColors.borderBlack, width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: SysQuestColors.shadowBlack,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'HÉROE $vida/100',
+                style: SysQuestTypography.caption.copyWith(
+                  color: AppTheme.verdeVida,
+                  fontSize: 7,
+                ),
+              ),
+              const SizedBox(height: 3),
+              ClipRRect(
+                borderRadius: BorderRadius.zero,
+                child: LinearProgressIndicator(
+                  value: (vida / 100).clamp(0.0, 1.0),
+                  color: AppTheme.verdeVida,
+                  backgroundColor: SysQuestColors.stonePanel,
+                  minHeight: 6,
+                ),
+              ),
+            ],
+          ),
         ),
         if (danio != null)
           Positioned(
-            right: 20,
             top: -8,
+            right: 12,
             child: _NumeroDanio(
               key: ValueKey(danioKey),
               valor: danio!,
-              color: AppTheme.rojoDanio,
+              color: SysQuestColors.lifeRed,
             ),
           ),
       ],
@@ -914,159 +871,255 @@ class _BarraVidaJugador extends StatelessWidget {
   }
 }
 
-class _BarraVida extends StatefulWidget {
-  final String etiqueta;
-  final int valor;
-  final int maximo;
-  final Color color;
+class _BarraVidaEnemigoCompacta extends StatelessWidget {
+  final int vida;
+  final int vidaMaxima;
+  final int? danio;
+  final int danioKey;
 
-  const _BarraVida({
-    required this.etiqueta,
-    required this.valor,
-    required this.maximo,
-    required this.color,
+  const _BarraVidaEnemigoCompacta({
+    required this.vida,
+    required this.vidaMaxima,
+    required this.danio,
+    required this.danioKey,
   });
 
   @override
-  State<_BarraVida> createState() => _BarraVidaState();
-}
-
-class _BarraVidaState extends State<_BarraVida> with SingleTickerProviderStateMixin {
-  late final AnimationController _flashController;
-  late int _valorAnterior;
-
-  @override
-  void initState() {
-    super.initState();
-    _flashController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-    _valorAnterior = widget.valor;
-  }
-
-  @override
-  void didUpdateWidget(_BarraVida oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.valor != oldWidget.valor || widget.maximo != oldWidget.maximo) {
-      setState(() {});
-    }
-    if (widget.valor < _valorAnterior) {
-      _flashController.forward(from: 0.0).then((_) => _flashController.reverse());
-    }
-    _valorAnterior = widget.valor;
-  }
-
-  @override
-  void dispose() {
-    _flashController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final progreso = widget.maximo == 0 ? 0.0 : (widget.valor / widget.maximo).clamp(0.0, 1.0);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final maximo = vidaMaxima > 0 ? vidaMaxima : 100;
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
-        Text(widget.etiqueta, style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 5),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(end: progreso),
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOutCubic,
-            builder: (context, valorAnimado, _) {
-              return AnimatedBuilder(
-                animation: _flashController,
-                builder: (context, _) {
-                  final colorAct = Color.lerp(widget.color, Colors.white, _flashController.value)!;
-                  return LinearProgressIndicator(
-                    minHeight: 12,
-                    value: valorAnimado,
-                    color: colorAct,
-                    backgroundColor: AppTheme.superficieElevada,
-                  );
-                },
-              );
-            },
+        Container(
+          width: 140,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: SysQuestColors.dungeonVoid.withValues(alpha: 0.85),
+            border: Border.all(color: SysQuestColors.borderBlack, width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: SysQuestColors.shadowBlack,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'ENEMIGO $vida/$maximo',
+                style: SysQuestTypography.caption.copyWith(
+                  color: SysQuestColors.lifeRed,
+                  fontSize: 7,
+                ),
+              ),
+              const SizedBox(height: 3),
+              ClipRRect(
+                borderRadius: BorderRadius.zero,
+                child: LinearProgressIndicator(
+                  value: (vida / maximo).clamp(0.0, 1.0),
+                  color: SysQuestColors.lifeRed,
+                  backgroundColor: SysQuestColors.stonePanel,
+                  minHeight: 6,
+                ),
+              ),
+            ],
           ),
         ),
+        if (danio != null)
+          Positioned(
+            top: -8,
+            right: 12,
+            child: _NumeroDanio(
+              key: ValueKey(danioKey),
+              valor: danio!,
+              color: SysQuestColors.lifeRed,
+            ),
+          ),
       ],
     );
   }
 }
 
-class _OpcionButton extends StatelessWidget {
-  final String letra;
-  final String texto;
-  final VoidCallback? onPressed;
+class _TickerNarrativoArena extends StatelessWidget {
+  final String ultimoMensaje;
+  final VoidCallback onTap;
 
-  const _OpcionButton({
-    required this.letra,
-    required this.texto,
-    this.onPressed,
+  const _TickerNarrativoArena({
+    required this.ultimoMensaje,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 60),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.superficieNoche,
-          foregroundColor: AppTheme.azulTexto,
-          side: const BorderSide(color: AppTheme.superficieElevada, width: 2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.75),
+          border: Border(
+            top: BorderSide(
+              color: SysQuestColors.stoneHighlight.withValues(alpha: 0.6),
+              width: 1.5,
+            ),
           ),
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
-        child: Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(
-                text: '$letra  ',
-                style: const TextStyle(
-                  fontFamily: 'PressStart2P',
-                  fontSize: 12,
-                  color: AppTheme.doradoCritico,
+        child: Row(
+          children: [
+            const Icon(
+              Icons.terminal,
+              color: SysQuestColors.gold,
+              size: 14,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                ultimoMensaje,
+                style: SysQuestTypography.caption.copyWith(
+                  color: SysQuestColors.gold,
+                  fontSize: 8,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              TextSpan(
-                text: texto,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
+            ),
+            const Icon(
+              Icons.unfold_more,
+              color: SysQuestColors.gold,
+              size: 14,
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _MensajeTurno extends StatelessWidget {
-  final String texto;
-  const _MensajeTurno({required this.texto});
+class _FilaWildcardsZeroScroll extends StatelessWidget {
+  final Map<TipoWildcard, int> wildcards;
+  final String? pistaActiva;
+  final bool golpeDobleActivo;
+  final bool roboDeVidaActivo;
+  final bool turnoEnProceso;
+  final ValueChanged<TipoWildcard> onUsarWildcard;
+
+  const _FilaWildcardsZeroScroll({
+    required this.wildcards,
+    required this.pistaActiva,
+    required this.golpeDobleActivo,
+    required this.roboDeVidaActivo,
+    required this.turnoEnProceso,
+    required this.onUsarWildcard,
+  });
+
+  String _spriteDeWildcard(TipoWildcard tipo) {
+    switch (tipo) {
+      case TipoWildcard.cincuentaCincuenta:
+        return 'weapon_knife.png';
+      case TipoWildcard.roboDeVida:
+        return 'flask_big_green.png';
+      case TipoWildcard.golpeDoble:
+        return 'weapon_waraxe.png';
+      case TipoWildcard.pista:
+        return 'flask_big_yellow.png';
+    }
+  }
+
+  bool _esActivo(TipoWildcard tipo) {
+    if (tipo == TipoWildcard.pista) return pistaActiva != null;
+    if (tipo == TipoWildcard.golpeDoble) return golpeDobleActivo;
+    if (tipo == TipoWildcard.roboDeVida) return roboDeVidaActivo;
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final esDanio = texto.contains('Incorrecto');
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Text(
-        texto,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: esDanio ? AppTheme.rojoDanio : AppTheme.doradoCritico,
-          fontFamily: 'PressStart2P',
-          fontSize: 12,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: TipoWildcard.values.map((tipo) {
+          final cantidad = wildcards[tipo] ?? 0;
+          final activo = _esActivo(tipo);
+          final habilitado = cantidad > 0 && !turnoEnProceso;
+
+          return _BotonComodinCuadrado(
+            spriteFileName: _spriteDeWildcard(tipo),
+            cantidad: cantidad,
+            activo: activo,
+            habilitado: habilitado,
+            onPressed: () => onUsarWildcard(tipo),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _BotonComodinCuadrado extends StatelessWidget {
+  final String spriteFileName;
+  final int cantidad;
+  final bool activo;
+  final bool habilitado;
+  final VoidCallback onPressed;
+
+  const _BotonComodinCuadrado({
+    required this.spriteFileName,
+    required this.cantidad,
+    required this.activo,
+    required this.habilitado,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color borderColor;
+    if (activo) {
+      borderColor = SysQuestColors.manaCyan;
+    } else if (habilitado) {
+      borderColor = SysQuestColors.stoneHighlight;
+    } else {
+      borderColor = SysQuestColors.borderBlack;
+    }
+
+    return GestureDetector(
+      onTap: habilitado ? onPressed : null,
+      child: Opacity(
+        opacity: habilitado ? 1.0 : 0.45,
+        child: Container(
+          width: 52,
+          height: 48,
+          decoration: BoxDecoration(
+            color: SysQuestColors.stonePanel,
+            border: Border.all(color: borderColor, width: 2),
+            boxShadow: habilitado
+                ? const [
+                    BoxShadow(
+                      color: SysQuestColors.shadowBlack,
+                      offset: Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              PixelIcon(fileName: spriteFileName, size: 22),
+              const SizedBox(height: 2),
+              Text(
+                'x$cantidad',
+                style: SysQuestTypography.caption.copyWith(
+                  fontSize: 7,
+                  color: habilitado
+                      ? (activo ? SysQuestColors.manaCyan : SysQuestColors.gold)
+                      : SysQuestColors.disabledGray,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1540,29 +1593,6 @@ class _FilaResumen extends StatelessWidget {
   }
 }
 
-class _EtiquetaJefe extends StatelessWidget {
-  const _EtiquetaJefe();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppTheme.doradoCritico,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: const Text(
-        'JEFE',
-        style: TextStyle(
-          color: AppTheme.fondoNoche,
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-}
-
 class _NumeroDanio extends StatefulWidget {
   final int valor;
   final Color color;
@@ -1643,25 +1673,6 @@ class _NumeroDanioState extends State<_NumeroDanio> with SingleTickerProviderSta
         ],
       ),
     );
-  }
-}
-
-String _iconoCategoria(String? categoria) {
-  switch (categoria) {
-    case 'debug':
-      return '🐞';
-    case 'database':
-      return '🗄️';
-    case 'algorithm':
-      return '🧩';
-    case 'network':
-      return '🌐';
-    case 'architecture':
-      return '🏛️';
-    case 'cyber':
-      return '🛡️';
-    default:
-      return '👾';
   }
 }
 
@@ -1938,110 +1949,6 @@ class _FilaStatPausa extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _FilaWildcards extends StatelessWidget {
-  final Map<TipoWildcard, int> wildcards;
-  final String? pistaActiva;
-  final bool golpeDobleActivo;
-  final bool roboDeVidaActivo;
-  final bool turnoEnProceso;
-  final ValueChanged<TipoWildcard> onUsarWildcard;
-
-  const _FilaWildcards({
-    required this.wildcards,
-    required this.pistaActiva,
-    required this.golpeDobleActivo,
-    required this.roboDeVidaActivo,
-    required this.turnoEnProceso,
-    required this.onUsarWildcard,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: TipoWildcard.values.map((tipo) {
-        final cantidad = wildcards[tipo] ?? 0;
-        final activa = _esActiva(tipo);
-        return _WildcardButton(
-          tipo: tipo,
-          cantidad: cantidad,
-          activa: activa,
-          habilitada: cantidad > 0 && !turnoEnProceso,
-          onPressed: () => onUsarWildcard(tipo),
-        );
-      }).toList(),
-    );
-  }
-
-  bool _esActiva(TipoWildcard tipo) {
-    if (tipo == TipoWildcard.pista) return pistaActiva != null;
-    if (tipo == TipoWildcard.golpeDoble) return golpeDobleActivo;
-    if (tipo == TipoWildcard.roboDeVida) return roboDeVidaActivo;
-    return false;
-  }
-}
-
-class _WildcardButton extends StatelessWidget {
-  final TipoWildcard tipo;
-  final int cantidad;
-  final bool activa;
-  final bool habilitada;
-  final VoidCallback onPressed;
-
-  const _WildcardButton({
-    required this.tipo,
-    required this.cantidad,
-    required this.activa,
-    required this.habilitada,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final w = Wildcard(tipo: tipo, cantidad: cantidad);
-    final color = activa
-        ? AppTheme.verdeVida
-        : (habilitada ? AppTheme.doradoCritico : AppTheme.superficieElevada);
-
-    return Tooltip(
-      message: w.descripcion,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: habilitada ? onPressed : null,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppTheme.superficieNoche,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: color, width: 2),
-              boxShadow: activa
-                  ? [BoxShadow(color: AppTheme.verdeVida.withValues(alpha: 0.4), blurRadius: 12)]
-                  : null,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(w.emoji, style: const TextStyle(fontSize: 20)),
-                const SizedBox(height: 2),
-                Text(
-                  'x$cantidad',
-                  style: TextStyle(
-                    fontFamily: 'PressStart2P',
-                    fontSize: 9,
-                    color: color,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

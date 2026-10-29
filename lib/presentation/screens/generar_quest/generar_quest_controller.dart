@@ -8,6 +8,7 @@ enum GenerarQuestEstado { inicial, generando, exito, error }
 
 class GenerarQuestController extends ChangeNotifier {
   final GenerarQuestUseCase _useCase;
+  int _peticionActual = 0;
 
   GenerarQuestController(this._useCase);
 
@@ -34,7 +35,16 @@ class GenerarQuestController extends ChangeNotifier {
     return semillas[DateTime.now().millisecond % semillas.length];
   }
 
+  void cancelar() {
+    _peticionActual++;
+    estado = GenerarQuestEstado.inicial;
+    mensajeError = null;
+    codigoError = null;
+    notifyListeners();
+  }
+
   Future<void> generar(String tema) async {
+    final peticionId = ++_peticionActual;
     estado = GenerarQuestEstado.generando;
     questGenerada = null;
     mensajeError = null;
@@ -42,13 +52,17 @@ class GenerarQuestController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      questGenerada = await _useCase.ejecutar(tema);
+      final res = await _useCase.ejecutar(tema);
+      if (_peticionActual != peticionId) return;
+      questGenerada = res;
       estado = GenerarQuestEstado.exito;
     } on QuestInvalidaException catch (error) {
+      if (_peticionActual != peticionId) return;
       mensajeError = error.mensaje;
       codigoError = null;
       estado = GenerarQuestEstado.error;
     } on ApiException catch (error) {
+      if (_peticionActual != peticionId) return;
       if (kDebugMode) {
         debugPrint('[GenerarQuest] Error: ${error.codigo} - ${error.mensaje}');
       }
@@ -56,6 +70,7 @@ class GenerarQuestController extends ChangeNotifier {
       codigoError = error.codigo;
       estado = GenerarQuestEstado.error;
     } catch (e) {
+      if (_peticionActual != peticionId) return;
       if (kDebugMode) {
         debugPrint('[GenerarQuest] Error inesperado: $e');
       }

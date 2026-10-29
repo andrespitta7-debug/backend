@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import '../core/design_system/sysquest_theme.dart';
+import '../core/design_system/widgets/retro_panel_box.dart';
+import '../core/design_system/widgets/retro_pixel_button.dart';
 import '../theme/app_theme.dart';
 
-/// Diálogo modal llamativo y estilizado para alertas y errores en SysQuest
+/// Diálogo modal 16-bit retro para alertas y errores en SysQuest
 class DialogoAlertaSysQuest extends StatelessWidget {
   final String titulo;
   final String mensaje;
@@ -38,6 +41,7 @@ class DialogoAlertaSysQuest extends StatelessWidget {
     return showDialog(
       context: context,
       barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.75),
       builder: (ctx) => DialogoAlertaSysQuest(
         titulo: titulo,
         mensaje: mensaje,
@@ -66,102 +70,68 @@ class DialogoAlertaSysQuest extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Container(
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          color: const Color(0xFF161922),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colorPrimario, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: colorPrimario.withValues(alpha: 0.35),
-              blurRadius: 28,
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                color: colorPrimario.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-                border: Border.all(color: colorPrimario, width: 2),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: RetroPanelBox(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: SysQuestColors.dungeonVoid,
+                    border: Border.all(color: colorPrimario, width: 3),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: SysQuestColors.shadowBlack,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Icon(icono, color: colorPrimario, size: 28),
+                ),
               ),
-              child: Icon(icono, color: colorPrimario, size: 32),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              titulo,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'PressStart2P',
-                fontSize: 12,
+              const SizedBox(height: 14),
+              Text(
+                titulo,
+                textAlign: TextAlign.center,
+                style: SysQuestTypography.h3.copyWith(
+                  color: colorPrimario,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                mensaje,
+                textAlign: TextAlign.center,
+                style: SysQuestTypography.caption.copyWith(
+                  color: SysQuestColors.parchmentText,
+                  height: 1.5,
+                  fontSize: 9,
+                ),
+              ),
+              const SizedBox(height: 20),
+              RetroPixelButton(
+                text: textoBoton.toUpperCase(),
                 color: colorPrimario,
-                letterSpacing: 1,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              mensaje,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppTheme.azulTexto,
-                fontSize: 14,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 22),
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colorPrimario,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+                textColor: SysQuestColors.dungeonVoid,
                 onPressed: onAceptar ?? () => Navigator.of(context).pop(),
-                child: Text(
-                  textoBoton,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
-                ),
               ),
-            ),
-            if (textoBotonSecundario != null) ...[
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                height: 42,
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.azulTexto,
-                    side: const BorderSide(color: Color(0xFF3E455B), width: 1.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
+              if (textoBotonSecundario != null) ...[
+                const SizedBox(height: 10),
+                RetroPixelButton(
+                  text: textoBotonSecundario!.toUpperCase(),
+                  color: SysQuestColors.stonePanel,
+                  textColor: SysQuestColors.parchmentText,
                   onPressed: onSecundario ?? () => Navigator.of(context).pop(),
-                  child: Text(
-                    textoBotonSecundario!,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

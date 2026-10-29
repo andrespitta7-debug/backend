@@ -91,8 +91,8 @@ QuestCompleta crearQuest({required String titulo}) {
       dificultad: numero == 1
           ? 'facil'
           : numero == 2
-          ? 'medio'
-          : 'dificil',
+              ? 'medio'
+              : 'dificil',
       tipoEncuentro: numero == 3 ? 'jefe' : 'normal',
       vidaEnemigo: 30,
       opciones: opciones,
@@ -156,7 +156,9 @@ void main() {
       controller.dispose();
     });
 
-    test('captura ApiException temporal (IA_TIMEOUT) y marca esErrorReintentable como true', () async {
+    test(
+        'captura ApiException temporal (IA_TIMEOUT) y marca esErrorReintentable como true',
+        () async {
       final repo = FakeQuestRepository();
       final controller = GenerarQuestController(
         GenerarQuestUseCase(
@@ -183,7 +185,9 @@ void main() {
       controller.dispose();
     });
 
-    test('captura ApiException no reintentable (IA_JSON_INVALIDO) y marca esErrorReintentable como false', () async {
+    test(
+        'captura ApiException no reintentable (IA_JSON_INVALIDO) y marca esErrorReintentable como false',
+        () async {
       final repo = FakeQuestRepository();
       final controller = GenerarQuestController(
         GenerarQuestUseCase(
@@ -216,7 +220,8 @@ void main() {
       final controller = GenerarQuestController(
         GenerarQuestUseCase(
           _ThrowingQuestGeneratorRepository(
-            const ApiException('Error', statusCode: 500, codigo: 'ERROR_PERSISTENCIA'),
+            const ApiException('Error',
+                statusCode: 500, codigo: 'ERROR_PERSISTENCIA'),
           ),
           repo,
         ),
@@ -228,10 +233,13 @@ void main() {
       controller.dispose();
     });
 
-    test('questSemillaAleatoria devuelve uno de los 3 UUIDs de semilla válidos', () {
+    test(
+        'questSemillaAleatoria devuelve uno de los 3 UUIDs de semilla válidos',
+        () {
       final repo = FakeQuestRepository();
       final controller = GenerarQuestController(
-        GenerarQuestUseCase(FakeQuestGeneratorRepository(crearQuest(titulo: 'T')), repo),
+        GenerarQuestUseCase(
+            FakeQuestGeneratorRepository(crearQuest(titulo: 'T')), repo),
       );
 
       const validas = {
@@ -244,6 +252,24 @@ void main() {
         final semilla = controller.questSemillaAleatoria();
         expect(validas.contains(semilla), isTrue);
       }
+
+      controller.dispose();
+    });
+
+    test('cancelar() reinicia el estado a inicial e invalida la peticion',
+        () async {
+      final generator =
+          FakeQuestGeneratorRepository(crearQuest(titulo: 'Quest Test'));
+      final localRepo = FakeQuestRepository();
+      final useCase = GenerarQuestUseCase(generator, localRepo);
+      final controller = GenerarQuestController(useCase);
+
+      controller.estado = GenerarQuestEstado.generando;
+      controller.cancelar();
+
+      expect(controller.estado, equals(GenerarQuestEstado.inicial));
+      expect(controller.mensajeError, isNull);
+      expect(controller.codigoError, isNull);
 
       controller.dispose();
     });
@@ -265,5 +291,6 @@ class _ThrowingQuestGeneratorRepository implements QuestGeneratorRepository {
     required String categoria,
     required String dificultad,
     required int ultimoNumero,
-  }) async => throw error;
+  }) async =>
+      throw error;
 }

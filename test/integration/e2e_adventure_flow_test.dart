@@ -17,8 +17,8 @@ import 'package:sysquest_app/infrastructure/persistence/sqlite/sqlite_auth_repos
 import 'package:sysquest_app/infrastructure/persistence/sqlite/sqlite_partida_repository.dart';
 import 'package:sysquest_app/infrastructure/persistence/sqlite/sqlite_quest_repository.dart';
 import 'package:sysquest_app/presentation/screens/auth/auth_controller.dart';
-import 'package:sysquest_app/presentation/screens/combate/combate_controller.dart';
-import 'package:sysquest_app/presentation/screens/combate/combate_screen.dart';
+
+
 import 'package:sysquest_app/presentation/screens/generar_quest/generar_quest_controller.dart';
 import 'package:sysquest_app/presentation/screens/menu/menu_principal_screen.dart';
 import 'package:sysquest_app/presentation/screens/progreso/progreso_controller.dart';

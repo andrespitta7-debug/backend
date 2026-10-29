@@ -363,7 +363,7 @@ class _ErrorBanner extends StatelessWidget {
   }
 }
 
-class _BotonOAuth extends StatelessWidget {
+class _BotonOAuth extends StatefulWidget {
   final IconData icono;
   final String label;
   final Color color;
@@ -377,24 +377,61 @@ class _BotonOAuth extends StatelessWidget {
   });
 
   @override
+  State<_BotonOAuth> createState() => _BotonOAuthState();
+}
+
+class _BotonOAuthState extends State<_BotonOAuth> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 60),
+        margin:
+            EdgeInsets.only(top: _pressed ? 3 : 0, bottom: _pressed ? 0 : 3),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: SysQuestColors.dungeonVoid,
-          border: Border.all(color: color, width: 2),
+          color: SysQuestColors.stonePanel,
+          border: Border.all(color: SysQuestColors.borderBlack, width: 2),
+          boxShadow: _pressed
+              ? null
+              : const [
+                  BoxShadow(
+                    color: SysQuestColors.shadowBlack,
+                    offset: Offset(0, 3),
+                  ),
+                ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icono, color: color, size: 18),
-            const SizedBox(width: 4),
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: SysQuestColors.dungeonVoid,
+                border: Border.all(color: widget.color, width: 2),
+              ),
+              child: Center(
+                child: Icon(
+                  widget.icono,
+                  color: widget.color,
+                  size: 14,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
             Text(
-              label,
+              widget.label.toUpperCase(),
               style: SysQuestTypography.caption.copyWith(
-                color: color,
+                color: SysQuestColors.parchmentText,
                 fontSize: 8,
               ),
             ),

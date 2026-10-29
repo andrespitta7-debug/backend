@@ -78,6 +78,7 @@ diagnostico en validator
   `CombateController` y `combate_screen.dart` para soportar preguntas extra,
   transición automática de enemigos al morir, uso del pool narrativo inmersivo y
   modal de pausa con retiro/continuar.
+- **Fix fallback parámetros combate:** Fallback seguro en `CombateController.cargarQuest` para `temaQuest` ('Aventura General'), `categoriaQuest` ('libre') y `dificultadQuest` ('facil'), evitando errores 400 del backend al solicitar más encuentros en quests predeterminadas/semilla.
 
 ## En curso
 

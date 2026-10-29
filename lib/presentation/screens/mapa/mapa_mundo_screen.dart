@@ -39,6 +39,13 @@ class MapaMundo2DScreen extends StatefulWidget {
 }
 
 class _MapaMundo2DScreenState extends State<MapaMundo2DScreen> {
+  int _scoreUsuario = 500;
+  final Map<TipoWildcard, int> _inventarioUsuario = {
+    TipoWildcard.pista: 1,
+    TipoWildcard.golpeDoble: 1,
+    TipoWildcard.roboDeVida: 1,
+    TipoWildcard.cincuentaCincuenta: 1,
+  };
   // Configuración del Mundo 1: "Valle de los Algoritmos" (Estilo SMB3)
   final List<NodoMundo> _nodos = const [
     NodoMundo(
@@ -152,16 +159,21 @@ class _MapaMundo2DScreenState extends State<MapaMundo2DScreen> {
                       if (nodo.tipo == 'mercader') {
                         MercaderTiendaDialog.mostrar(
                           context,
-                          scoreDisponible: 350,
-                          inventarioActual: const {
-                            TipoWildcard.pista: 1,
-                            TipoWildcard.golpeDoble: 1,
-                            TipoWildcard.roboDeVida: 1,
-                            TipoWildcard.cincuentaCincuenta: 1,
-                          },
+                          scoreDisponible: _scoreUsuario,
+                          inventarioActual: _inventarioUsuario,
+
+
+
+
+
                           onComprar: (tipo, costo) {
-                            // Feedback de compra exitosa
+                            setState(() {
+                              _scoreUsuario -= costo;
+                              _inventarioUsuario[tipo] =
+                                  (_inventarioUsuario[tipo] ?? 0) + 1;
+                            });
                           },
+
                         );
                         return;
                       }

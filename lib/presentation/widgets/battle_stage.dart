@@ -11,7 +11,7 @@ class BattleStage extends StatelessWidget {
     super.key,
     required this.playerActor,
     required this.enemyActor,
-    this.height = 125.0,
+    this.height = 220.0,
   });
 
   @override

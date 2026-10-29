@@ -87,6 +87,9 @@ class CombateController extends ChangeNotifier {
   bool get esperandoDecisionRonda => encuentroSuperado;
   EventoDecision? get eventoActivo => _eventoActivo;
   bool get esFinDeRonda => _enemigosDerrotados > 0 && _enemigosDerrotados % 3 == 0;
+  String get temaQuest => _temaQuest;
+  String get categoriaQuest => _categoriaQuest;
+  String get dificultadQuest => _dificultadQuest;
 
   bool get ganoCombate => jugadorGano;
   int get puntosPorEnemigos => _enemigosDerrotados * 100;
@@ -293,9 +296,15 @@ class CombateController extends ChangeNotifier {
     }
     _poolNarrativoSemilla = semilla;
 
-    if (temaQuest.isNotEmpty) _temaQuest = temaQuest;
-    if (categoriaQuest.isNotEmpty) _categoriaQuest = categoriaQuest;
-    if (dificultadQuest.isNotEmpty) _dificultadQuest = dificultadQuest;
+    _temaQuest = (temaQuest.trim().length >= 3)
+        ? temaQuest.trim()
+        : 'Aventura General';
+    _categoriaQuest = categoriaQuest.trim().isNotEmpty
+        ? categoriaQuest.trim()
+        : 'libre';
+    _dificultadQuest = dificultadQuest.trim().isNotEmpty
+        ? dificultadQuest.trim()
+        : 'facil';
 
     if (_encuentros.isNotEmpty) {
       vidaEnemigo = _encuentros.first.vidaEnemigo;

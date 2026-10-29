@@ -130,7 +130,10 @@ void main() {
     final barras = find.byType(LinearProgressIndicator);
     expect(barras, findsNWidgets(2));
 
-    await tester.tap(find.text('A  Respuesta crítica'));
+    final opcionCritica = find.text('A  Respuesta crítica');
+    await tester.ensureVisible(opcionCritica);
+    await tester.pump();
+    await tester.tap(opcionCritica);
     await tester.pump(const Duration(milliseconds: 100));
     final posicionBarraEnemigo = tester.getTopLeft(barras.at(0));
     final posicionDanioEnemigo = tester.getCenter(find.text('-25').first);
@@ -182,7 +185,10 @@ void main() {
     );
     expect(barraEnemigoInicial.value, equals(1.0));
 
-    await tester.tap(find.text('A  Respuesta crítica'));
+    final opcionCritica = find.text('A  Respuesta crítica');
+    await tester.ensureVisible(opcionCritica);
+    await tester.pump();
+    await tester.tap(opcionCritica);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
