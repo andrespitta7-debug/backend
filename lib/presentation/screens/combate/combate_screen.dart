@@ -13,15 +13,10 @@ import '../../../domain/entities/visual_scene.dart';
 import '../../theme/app_theme.dart';
 import '../generar/generar_quest_screen.dart';
 import '../progreso/progreso_screen.dart';
-import 'package:flame/flame.dart';
-import 'package:flame/widgets.dart';
-import 'package:flame/sprite.dart';
+import '../../widgets/battle_fighter.dart';
+import '../../widgets/battle_stage.dart';
+import '../../widgets/enemy_damage_wrapper.dart';
 import 'combate_controller.dart';
-
-enum _PosicionCombate { jugador, enemigo }
-
-const _emojiJugador = '🧙';
-const _emojiEnemigo = '👾';
 
 class CombateScreen extends StatefulWidget {
   final String idQuest;
@@ -51,6 +46,14 @@ class _CombateScreenState extends State<CombateScreen>
   int _danioJugadorKey = 0;
   Timer? _ocultarDanioEnemigo;
   Timer? _ocultarDanioJugador;
+  Timer? _hitFeedbackTimer;
+
+  final GlobalKey<BattleFighterWidgetState> _playerFighterKey =
+      GlobalKey<BattleFighterWidgetState>();
+  final GlobalKey<BattleFighterWidgetState> _enemyFighterKey =
+      GlobalKey<BattleFighterWidgetState>();
+  bool _enemigoRecibioGolpe = false;
+  bool _enemigoMuerto = false;
 
   late final AnimationController _temblorEnemigo;
   late final AnimationController _sacudidaPantalla;
@@ -83,7 +86,7 @@ class _CombateScreenState extends State<CombateScreen>
         preguntasExtra: widget.questCompleta?.preguntasExtra,
         semilla: widget.questCompleta?.semilla ?? 0,
         temaQuest: widget.questCompleta?.quest.tema ?? '',
-        categoriaQuest: widget.questCompleta?.quest.categoria ?? '',
+        categoriaQuest: widget.categoriaQuest ?? widget.questCompleta?.quest.categoria ?? '',
         dificultadQuest: widget.questCompleta?.quest.dificultad ?? '',
       );
     });
@@ -95,6 +98,8 @@ class _CombateScreenState extends State<CombateScreen>
     if (controller == null || controller.cargando || resultado == null) return;
     if (identical(_resultadoMostrado, resultado)) return;
     _resultadoMostrado = resultado;
+
+    final enemigoMurio = controller.vidaEnemigo <= 0;
 
     if (resultado.danoAlEnemigo > 0) {
       _sacudidaAmplitud = 4.0;
@@ -108,11 +113,38 @@ class _CombateScreenState extends State<CombateScreen>
           _destelloCritico.forward(from: 0);
         }
       });
+
+      // Embestida y tajo de espada del jugador con impacto a los 128ms
+      _playerFighterKey.currentState?.playAttack(
+        onImpactMoment: () {
+          if (!mounted) return;
+          setState(() {
+            _enemigoRecibioGolpe = true;
+            if (enemigoMurio) {
+              _enemigoMuerto = true;
+            }
+          });
+
+          _hitFeedbackTimer?.cancel();
+          _hitFeedbackTimer = Timer(const Duration(milliseconds: 180), () {
+            if (mounted) {
+              setState(() {
+                _enemigoRecibioGolpe = false;
+              });
+            }
+          });
+        },
+      );
     }
     if (resultado.danoAlJugador > 0) {
       _sacudidaAmplitud = 8.0;
       _sacudidaPantalla.forward(from: 0);
       _mostrarDanioJugador(resultado.danoAlJugador);
+
+      // Embestida del enemigo al contraatacar
+      _enemyFighterKey.currentState?.playAttack(
+        onImpactMoment: () {},
+      );
     }
   }
 
@@ -144,6 +176,7 @@ class _CombateScreenState extends State<CombateScreen>
 
   @override
   void dispose() {
+    _hitFeedbackTimer?.cancel();
     _ocultarDanioEnemigo?.cancel();
     _ocultarDanioJugador?.cancel();
     _controller?.removeListener(_detectarCambioDeEstado);
@@ -241,6 +274,10 @@ class _CombateScreenState extends State<CombateScreen>
               controller: controller,
               turnoEnProceso: controller.turnoEnProceso,
               encuentro: encuentro,
+              playerFighterKey: _playerFighterKey,
+              enemyFighterKey: _enemyFighterKey,
+              enemigoRecibioGolpe: _enemigoRecibioGolpe,
+              enemigoMuerto: controller.vidaEnemigo <= 0 || _enemigoMuerto,
               categoria:
                   widget.categoriaQuest ??
                   (widget.idQuest == 'quest-001' ? 'debug' : null),
@@ -401,6 +438,10 @@ class _CombateContenido extends StatelessWidget {
   final CombateController controller;
   final bool turnoEnProceso;
   final Encuentro encuentro;
+  final GlobalKey<BattleFighterWidgetState> playerFighterKey;
+  final GlobalKey<BattleFighterWidgetState> enemyFighterKey;
+  final bool enemigoRecibioGolpe;
+  final bool enemigoMuerto;
   final String? categoria;
   final int? danioEnemigo;
   final int danioEnemigoKey;
@@ -419,6 +460,10 @@ class _CombateContenido extends StatelessWidget {
     required this.controller,
     required this.turnoEnProceso,
     required this.encuentro,
+    required this.playerFighterKey,
+    required this.enemyFighterKey,
+    required this.enemigoRecibioGolpe,
+    required this.enemigoMuerto,
     required this.categoria,
     required this.danioEnemigo,
     required this.danioEnemigoKey,
@@ -514,20 +559,25 @@ class _CombateContenido extends StatelessWidget {
               onVerProgreso: onVerProgreso,
             )
           else ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _AvatarCombate(
-                  emoji: _emojiJugador,
-                  posicion: _PosicionCombate.jugador,
-                  animacionActiva: controller.resultadoUltimoTurno,
+            BattleStage(
+              playerActor: BattleFighterWidget(
+                key: playerFighterKey,
+                characterPrefix: 'knight_m',
+                weaponSprite: 'weapon_knight_sword.png',
+                isEnemy: false,
+              ),
+              enemyActor: EnemyDamageAndDeathWrapper(
+                isHit: enemigoRecibioGolpe,
+                isDead: enemigoMuerto,
+                child: BattleFighterWidget(
+                  key: enemyFighterKey,
+                  characterPrefix: encuentro.esJefe ? 'big_demon' : 'goblin',
+                  weaponSprite: encuentro.esJefe
+                      ? 'weapon_cleaver.png'
+                      : 'weapon_knife.png',
+                  isEnemy: true,
                 ),
-                _AvatarCombate(
-                  emoji: _emojiEnemigo,
-                  posicion: _PosicionCombate.enemigo,
-                  animacionActiva: controller.resultadoUltimoTurno,
-                ),
-              ],
+              ),
             ),
             const SizedBox(height: 16),
             _DialogoPregunta(pregunta: encuentro.pregunta),
@@ -1841,183 +1891,6 @@ class _EstiloLineaNarrativa {
         fontStyle: FontStyle.italic,
       );
     }
-  }
-}
-
-class _AvatarCombate extends StatefulWidget {
-  final String emoji;
-  final _PosicionCombate posicion;
-  final ResultadoCombate? animacionActiva;
-
-  const _AvatarCombate({
-    required this.emoji,
-    required this.posicion,
-    required this.animacionActiva,
-  });
-
-  @override
-  State<_AvatarCombate> createState() => _AvatarCombateState();
-}
-
-class _AvatarCombateState extends State<_AvatarCombate> {
-  double _desplazamiento = 0;
-  double _escala = 1.0;
-  double _rotacion = 0.0;
-  ResultadoCombate? _ultimoResultadoProcesado;
-  Timer? _timerAnimacion;
-  SpriteAnimation? _animacion;
-  SpriteAnimationTicker? _ticker;
-
-  @override
-  void initState() {
-    super.initState();
-    _iniciarCargaAnimacion();
-  }
-
-  void _iniciarCargaAnimacion() {
-    _cargarAnimacion().then((anim) {
-      if (mounted && anim != null) {
-        setState(() {
-          _animacion = anim;
-          _ticker = anim.createTicker();
-        });
-      }
-    });
-  }
-
-  Future<SpriteAnimation?> _cargarAnimacion() async {
-    try {
-      Flame.images.prefix = 'assets/sprites/';
-      final frames = widget.posicion == _PosicionCombate.jugador
-          ? [
-              'frames/angel_idle_anim_f0.png',
-              'frames/angel_idle_anim_f1.png',
-              'frames/angel_idle_anim_f2.png',
-              'frames/angel_idle_anim_f3.png',
-            ]
-          : [
-              'frames/big_demon_idle_anim_f0.png',
-              'frames/big_demon_idle_anim_f1.png',
-              'frames/big_demon_idle_anim_f2.png',
-              'frames/big_demon_idle_anim_f3.png',
-            ];
-
-      final imagenes = await Future.wait(
-        frames.map((f) => Flame.images.load(f)),
-      );
-
-      final sprites = imagenes.map((img) => Sprite(img)).toList();
-
-      return SpriteAnimation.spriteList(
-        sprites,
-        stepTime: 0.15,
-        loop: true,
-      );
-    } catch (_) {
-      // Placeholder / fallback: si no se pueden cargar los frames (ej. en tests),
-      // se mantiene el emoji original sin saltos visuales ni excepciones.
-      return null;
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _AvatarCombate oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.posicion != widget.posicion) {
-      _iniciarCargaAnimacion();
-    }
-    if (widget.animacionActiva != null &&
-        widget.animacionActiva != _ultimoResultadoProcesado) {
-      _ultimoResultadoProcesado = widget.animacionActiva;
-      _activarAnimacion(widget.animacionActiva!);
-    }
-  }
-
-  @override
-  void dispose() {
-    _timerAnimacion?.cancel();
-    super.dispose();
-  }
-
-  void _activarAnimacion(ResultadoCombate resultado) {
-    final esAcierto = resultado.resultado == ResultadoTurno.acierto ||
-        resultado.resultado == ResultadoTurno.critico;
-    final esFallo = resultado.resultado == ResultadoTurno.fallo;
-
-    _timerAnimacion?.cancel();
-
-    if (esAcierto && widget.posicion == _PosicionCombate.jugador) {
-      setState(() {
-        _desplazamiento = 50;
-        _escala = 1.3;
-        _rotacion = -15 * (math.pi / 180);
-      });
-      _timerAnimacion = Timer(const Duration(milliseconds: 150), () {
-        if (mounted) {
-          setState(() {
-            _desplazamiento = 0;
-            _escala = 1.0;
-            _rotacion = 0.0;
-          });
-        }
-      });
-    } else if (esFallo && widget.posicion == _PosicionCombate.enemigo) {
-      setState(() => _desplazamiento = -50);
-      _timerAnimacion = Timer(const Duration(milliseconds: 150), () {
-        if (mounted) setState(() => _desplazamiento = 0);
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRect(
-      child: SizedBox(
-        width: 120,
-        height: 80,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: widget.posicion == _PosicionCombate.jugador
-              ? Alignment.centerLeft
-              : Alignment.centerRight,
-          children: [
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 150),
-              curve: Curves.easeOut,
-              left: widget.posicion == _PosicionCombate.jugador ? _desplazamiento : null,
-              right: widget.posicion == _PosicionCombate.enemigo ? -_desplazamiento : null,
-              top: 0,
-              bottom: 0,
-              width: 80,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                curve: Curves.easeOut,
-                transformAlignment: Alignment.center,
-                transform: Matrix4.identity()
-                  ..rotateZ(_rotacion)
-                  // ignore: deprecated_member_use
-                  ..scale(_escala),
-                child: Center(
-                  child: _animacion != null && _ticker != null
-                      ? SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: SpriteAnimationWidget(
-                            animation: _animacion!,
-                            animationTicker: _ticker!,
-                          ),
-                        )
-                      : Text(
-                          widget.emoji,
-                          style: const TextStyle(fontSize: 48),
-                        ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
