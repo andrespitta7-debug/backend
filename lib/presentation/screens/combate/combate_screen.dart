@@ -13,6 +13,9 @@ import '../../../domain/entities/visual_scene.dart';
 import '../../theme/app_theme.dart';
 import '../generar/generar_quest_screen.dart';
 import '../progreso/progreso_screen.dart';
+import 'package:flame/flame.dart';
+import 'package:flame/widgets.dart';
+import 'package:flame/sprite.dart';
 import 'combate_controller.dart';
 
 enum _PosicionCombate { jugador, enemigo }
@@ -1862,10 +1865,67 @@ class _AvatarCombateState extends State<_AvatarCombate> {
   double _rotacion = 0.0;
   ResultadoCombate? _ultimoResultadoProcesado;
   Timer? _timerAnimacion;
+  SpriteAnimation? _animacion;
+  SpriteAnimationTicker? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _iniciarCargaAnimacion();
+  }
+
+  void _iniciarCargaAnimacion() {
+    _cargarAnimacion().then((anim) {
+      if (mounted && anim != null) {
+        setState(() {
+          _animacion = anim;
+          _ticker = anim.createTicker();
+        });
+      }
+    });
+  }
+
+  Future<SpriteAnimation?> _cargarAnimacion() async {
+    try {
+      Flame.images.prefix = 'assets/sprites/';
+      final frames = widget.posicion == _PosicionCombate.jugador
+          ? [
+              'frames/angel_idle_anim_f0.png',
+              'frames/angel_idle_anim_f1.png',
+              'frames/angel_idle_anim_f2.png',
+              'frames/angel_idle_anim_f3.png',
+            ]
+          : [
+              'frames/big_demon_idle_anim_f0.png',
+              'frames/big_demon_idle_anim_f1.png',
+              'frames/big_demon_idle_anim_f2.png',
+              'frames/big_demon_idle_anim_f3.png',
+            ];
+
+      final imagenes = await Future.wait(
+        frames.map((f) => Flame.images.load(f)),
+      );
+
+      final sprites = imagenes.map((img) => Sprite(img)).toList();
+
+      return SpriteAnimation.spriteList(
+        sprites,
+        stepTime: 0.15,
+        loop: true,
+      );
+    } catch (_) {
+      // Placeholder / fallback: si no se pueden cargar los frames (ej. en tests),
+      // se mantiene el emoji original sin saltos visuales ni excepciones.
+      return null;
+    }
+  }
 
   @override
   void didUpdateWidget(covariant _AvatarCombate oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.posicion != widget.posicion) {
+      _iniciarCargaAnimacion();
+    }
     if (widget.animacionActiva != null &&
         widget.animacionActiva != _ultimoResultadoProcesado) {
       _ultimoResultadoProcesado = widget.animacionActiva;
@@ -1938,10 +1998,19 @@ class _AvatarCombateState extends State<_AvatarCombate> {
                   // ignore: deprecated_member_use
                   ..scale(_escala),
                 child: Center(
-                  child: Text(
-                    widget.emoji,
-                    style: const TextStyle(fontSize: 48),
-                  ),
+                  child: _animacion != null && _ticker != null
+                      ? SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: SpriteAnimationWidget(
+                            animation: _animacion!,
+                            animationTicker: _ticker!,
+                          ),
+                        )
+                      : Text(
+                          widget.emoji,
+                          style: const TextStyle(fontSize: 48),
+                        ),
                 ),
               ),
             ),
