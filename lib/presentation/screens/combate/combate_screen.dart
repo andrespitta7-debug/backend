@@ -9,6 +9,7 @@ import '../../../domain/entities/opcion_encuentro.dart';
 import '../../../domain/usecases/responder_encuentro_usecase.dart';
 import '../../../domain/entities/quest_completa.dart';
 import '../../../domain/entities/wildcard.dart';
+import '../../../domain/entities/visual_scene.dart';
 import '../../theme/app_theme.dart';
 import '../generar/generar_quest_screen.dart';
 import '../progreso/progreso_screen.dart';
@@ -488,6 +489,7 @@ class _CombateContenido extends StatelessWidget {
             if (controller.eventoActivo != null && !controller.esFinDeRonda)
               _EventoDecisionCard(
                 evento: controller.eventoActivo!,
+                visualScene: controller.eventoActualVisual?.visualScene,
                 vidaActual: controller.vidaJugador,
                 onSeleccionar: controller.resolverEventoDecision,
               )
@@ -1128,13 +1130,81 @@ class _RondaSuperada extends StatelessWidget {
   }
 }
 
+class _SpriteSceneViewer extends StatelessWidget {
+  final VisualScene visualScene;
+
+  const _SpriteSceneViewer({required this.visualScene});
+
+  Color _parseColor(String hex) {
+    try {
+      final clean = hex.replaceAll('#', '').trim();
+      final buffer = StringBuffer();
+      if (clean.length == 6) {
+        buffer.write('FF');
+        buffer.write(clean);
+      } else if (clean.length == 8) {
+        buffer.write(clean);
+      } else {
+        return AppTheme.azulTexto;
+      }
+      return Color(int.parse(buffer.toString(), radix: 16));
+    } catch (_) {
+      return AppTheme.azulTexto;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = _parseColor(visualScene.tintHex);
+
+    // TODO: Integrar SpriteAnimationWidget de Flame aquí
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.fondoNoche,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor, width: 2),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              visualScene.visualTag,
+              style: TextStyle(
+                fontFamily: 'PressStart2P',
+                fontSize: 11,
+                color: borderColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Bioma: ${visualScene.biomeTag} | Efecto: ${visualScene.screenEffect}',
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.white70,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _EventoDecisionCard extends StatelessWidget {
   final EventoDecision evento;
+  final VisualScene? visualScene;
   final int vidaActual;
   final void Function(String) onSeleccionar;
 
   const _EventoDecisionCard({
     required this.evento,
+    this.visualScene,
     required this.vidaActual,
     required this.onSeleccionar,
   });
@@ -1150,6 +1220,7 @@ class _EventoDecisionCard extends StatelessWidget {
       ),
       child: Column(
         children: [
+          if (visualScene != null) _SpriteSceneViewer(visualScene: visualScene!),
           Text(
             evento.iconoEmoji,
             style: const TextStyle(fontSize: 36),

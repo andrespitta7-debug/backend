@@ -11,6 +11,7 @@ import '../../../domain/usecases/finalizar_partida_usecase.dart';
 import '../../../domain/usecases/generar_encuentros_extra_usecase.dart';
 import '../../../domain/usecases/responder_encuentro_usecase.dart';
 import '../../../domain/entities/wildcard.dart';
+import '../../../domain/entities/visual_scene.dart';
 
 class OpcionEvento {
   final String etiqueta;
@@ -73,6 +74,7 @@ class CombateController extends ChangeNotifier {
   bool _modoTemerarioActivo = false;
   int _rondasTemerariasSuperadas = 0;
   EventoDecision? _eventoActivo;
+  GameEvent? eventoActualVisual;
 
   int get score => _score;
   int get enemigosDerrotados => _enemigosDerrotados;
@@ -250,6 +252,7 @@ class CombateController extends ChangeNotifier {
     _modoTemerarioActivo = false;
     _rondasTemerariasSuperadas = 0;
     _eventoActivo = null;
+    eventoActualVisual = null;
     _historialNarrativo.clear();
     turnoEnProceso = false;
 
@@ -449,6 +452,36 @@ class CombateController extends ChangeNotifier {
         if (_enemigosDerrotados % 3 != 0) {
           final caso = _enemigosDerrotados % 3;
           if (caso == 1) {
+            eventoActualVisual = const GameEvent(
+              eventId: 'evt_codice_arcano',
+              visualScene: VisualScene(
+                biomeTag: 'dungeon_crypt',
+                visualTag: 'trap_triggered',
+                animationMode: 'pulse',
+                screenEffect: 'subtle_glitch',
+                tintHex: '#4A90E2',
+              ),
+              narrative: NarrativeData(
+                title: '🏺 Códice Arcano',
+                storyText:
+                    'Encuentras un antiguo códice brillante entre los restos del enemigo.',
+                educationalHint:
+                    'Analizar código antiguo con cuidado evita trampas de concurrencia.',
+              ),
+              choices: [
+                EventChoice(
+                  id: 'estudiar_codice',
+                  label:
+                      '📖 Estudiar códice (-10 HP | +1 Comodín y +100 pts)',
+                  consequenceType: 'gamble_resource',
+                ),
+                EventChoice(
+                  id: 'destruir_codice',
+                  label: '🛡️ Purificar energía (+15 HP seguros)',
+                  consequenceType: 'safe_heal',
+                ),
+              ],
+            );
             _eventoActivo = const EventoDecision(
               titulo: '🏺 Códice Arcano',
               descripcion:
@@ -467,6 +500,36 @@ class CombateController extends ChangeNotifier {
               ],
             );
           } else {
+            eventoActualVisual = const GameEvent(
+              eventId: 'evt_mercader_abismo',
+              visualScene: VisualScene(
+                biomeTag: 'abyss_market',
+                visualTag: 'npc_mentor',
+                animationMode: 'float',
+                screenEffect: 'mist',
+                tintHex: '#9B51E0',
+              ),
+              narrative: NarrativeData(
+                title: '🧙‍♂️ Mercader del Abismo',
+                storyText:
+                    'Un mercader encapuchado emerge de las sombras ofreciendo un trato.',
+                educationalHint:
+                    'Equilibrar riesgo y recompensa es clave en sistemas distribuidos.',
+              ),
+              choices: [
+                EventChoice(
+                  id: 'mercader_poder',
+                  label:
+                      '⚡ Pacto de Poder (-15 HP | +1 Golpe Doble y +150 pts)',
+                  consequenceType: 'buff_damage',
+                ),
+                EventChoice(
+                  id: 'mercader_curar',
+                  label: '💚 Elixir Menor (+20 HP sin costo)',
+                  consequenceType: 'free_heal',
+                ),
+              ],
+            );
             _eventoActivo = const EventoDecision(
               titulo: '🧙‍♂️ Mercader del Abismo',
               descripcion:
@@ -487,6 +550,7 @@ class CombateController extends ChangeNotifier {
           }
         } else {
           _eventoActivo = null;
+          eventoActualVisual = null;
         }
         _avanzarSiguienteEnemigo();
       } else {
@@ -571,6 +635,7 @@ class CombateController extends ChangeNotifier {
   /// Desbloquea la transición de ronda permitiendo elegir Descanso Seguro o Pacto Temerario.
   void continuarSiguienteRonda({bool temerario = false}) {
     _eventoActivo = null;
+    eventoActualVisual = null;
     if (temerario) {
       _modoTemerarioActivo = true;
       if (vidaJugador > 25) {
@@ -629,6 +694,7 @@ class CombateController extends ChangeNotifier {
     }
 
     _eventoActivo = null;
+    eventoActualVisual = null;
     if (encuentroSuperado) {
       encuentroSuperado = false;
       mensajeUltimoTurno = null;
