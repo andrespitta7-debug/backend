@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../theme/app_theme.dart';
+import '../../core/design_system/sysquest_theme.dart';
+import '../../core/design_system/transitions/retro_page_route.dart';
+import '../../core/design_system/widgets/dungeon_menu_backdrop.dart';
+import '../../core/design_system/widgets/retro_panel_box.dart';
+import '../../core/design_system/widgets/retro_pixel_button.dart';
+import '../../core/design_system/widgets/retro_text_field.dart';
 import '../../widgets/dialogo_alerta.dart';
 import '../menu/menu_principal_screen.dart';
 import 'auth_controller.dart';
@@ -43,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
         titulo: 'FALLO DE ACCESO',
         mensaje: auth.error!,
         icono: Icons.lock_clock_outlined,
-        colorPrimario: AppTheme.rojoDanio,
+        colorPrimario: SysQuestColors.lifeRed,
       );
       return;
     }
@@ -53,9 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (usuario == null) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => MenuPrincipalScreen(usuario: usuario),
-        ),
+        buildRetroRoute(MenuPrincipalScreen(usuario: usuario)),
       );
     }
   }
@@ -63,128 +66,152 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
-    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
+      backgroundColor: SysQuestColors.dungeonVoid,
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 36, 24, 28),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: constraints.maxHeight - 64,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const _SysQuestLogo(),
-                  const SizedBox(height: 28),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(22),
+        child: DungeonMenuBackdrop(
+          isDoorOpen: false,
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const _SysQuestLogo(),
+                    const SizedBox(height: 20),
+                    RetroPanelBox(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            'Iniciar sesión',
-                            style: textTheme.headlineSmall,
+                            'INICIAR SESIÓN',
+                            style: SysQuestTypography.h2.copyWith(
+                              color: SysQuestColors.gold,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 8),
                           Text(
                             'Continúa tu aventura técnica.',
-                            style: textTheme.bodyMedium,
+                            style: SysQuestTypography.caption.copyWith(
+                              color: SysQuestColors.parchmentText
+                                  .withValues(alpha: 0.8),
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 22),
-                          TextField(
+                          const SizedBox(height: 20),
+                          RetroTextField(
                             controller: _emailController,
                             enabled: !auth.cargando,
                             keyboardType: TextInputType.text,
                             textInputAction: TextInputAction.next,
-                            autofillHints: const [AutofillHints.email, AutofillHints.username],
-                            decoration: const InputDecoration(
-                              labelText: 'Correo o Usuario',
-                              hintText: 'ej. usuario@correo.com o tu_usuario',
-                              prefixIcon: Icon(Icons.person_pin_outlined),
-                            ),
+                            autofillHints: const [
+                              AutofillHints.email,
+                              AutofillHints.username,
+                            ],
+                            labelText: 'CORREO O USUARIO',
+                            hintText: 'usuario@correo.com',
+                            prefixIcon: const Icon(Icons.person_outline),
                           ),
                           const SizedBox(height: 14),
-                          TextField(
+                          RetroTextField(
                             controller: _passwordController,
                             enabled: !auth.cargando,
                             obscureText: !_mostrarPassword,
                             textInputAction: TextInputAction.done,
                             autofillHints: const [AutofillHints.password],
+                            labelText: 'CONTRASEÑA',
+                            hintText: '••••••••',
+                            prefixIcon: const Icon(Icons.lock_outline),
                             onSubmitted: auth.cargando
                                 ? null
                                 : (_) => _iniciarSesion(),
-                            decoration: InputDecoration(
-                              labelText: 'Contraseña',
-                              prefixIcon: const Icon(Icons.lock_outline),
-                              suffixIcon: IconButton(
-                                tooltip: _mostrarPassword
-                                    ? 'Ocultar contraseña'
-                                    : 'Mostrar contraseña',
-                                onPressed: auth.cargando
-                                    ? null
-                                    : () => setState(
+                            suffixIcon: IconButton(
+                              tooltip: _mostrarPassword
+                                  ? 'Ocultar contraseña'
+                                  : 'Mostrar contraseña',
+                              onPressed: auth.cargando
+                                  ? null
+                                  : () => setState(
                                         () => _mostrarPassword =
                                             !_mostrarPassword,
                                       ),
-                                icon: Icon(
-                                  _mostrarPassword
-                                      ? Icons.visibility_off_outlined
-                                      : Icons.visibility_outlined,
-                                ),
+                              icon: Icon(
+                                _mostrarPassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                size: 18,
                               ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          CheckboxListTile(
-                            value: _mantenerSesion,
-                            onChanged: auth.cargando
-                                ? null
-                                : (value) => setState(
-                                    () => _mantenerSesion = value ?? false,
-                                  ),
-                            contentPadding: EdgeInsets.zero,
-                            controlAffinity: ListTileControlAffinity.leading,
-                            title: const Text('Mantener sesión iniciada'),
+                          const SizedBox(height: 6),
+                          Theme(
+                            data: Theme.of(context).copyWith(
+                              unselectedWidgetColor:
+                                  SysQuestColors.stoneHighlight,
+                            ),
+                            child: CheckboxListTile(
+                              value: _mantenerSesion,
+                              onChanged: auth.cargando
+                                  ? null
+                                  : (value) => setState(
+                                        () =>
+                                            _mantenerSesion = value ?? false,
+                                      ),
+                              activeColor: SysQuestColors.gold,
+                              checkColor: SysQuestColors.dungeonVoid,
+                              contentPadding: EdgeInsets.zero,
+                              controlAffinity:
+                                  ListTileControlAffinity.leading,
+                              title: Text(
+                                'Mantener sesión',
+                                style: SysQuestTypography.caption.copyWith(
+                                  color: SysQuestColors.parchmentText,
+                                ),
+                              ),
+                            ),
                           ),
                           if (auth.error != null) ...[
                             const SizedBox(height: 8),
                             _ErrorBanner(mensaje: auth.error!),
                           ],
                           const SizedBox(height: 16),
-                          SizedBox(
-                            height: 52,
-                            child: ElevatedButton(
-                              onPressed: auth.cargando ? null : _iniciarSesion,
-                              child: auth.cargando
-                                  ? const SizedBox(
-                                      height: 22,
-                                      width: 22,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                      ),
-                                    )
-                                  : const Text('Entrar'),
-                            ),
+                          RetroPixelButton(
+                            text: auth.cargando ? 'CARGANDO...' : 'ENTRAR',
+                            color: SysQuestColors.manaCyan,
+                            textColor: SysQuestColors.dungeonVoid,
+                            leadingSpriteFile: 'weapon_knight_sword.png',
+                            enabled: !auth.cargando,
+                            onPressed: _iniciarSesion,
                           ),
                           const SizedBox(height: 18),
                           Row(
-                            children: const [
-                              Expanded(child: Divider(color: Colors.white24)),
+                            children: [
+                              const Expanded(
+                                child: Divider(
+                                  color: SysQuestColors.stoneHighlight,
+                                ),
+                              ),
                               Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 10),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10),
                                 child: Text(
                                   'O continúa con',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.white60,
+                                  style: SysQuestTypography.caption.copyWith(
+                                    fontSize: 8,
+                                    color: SysQuestColors.parchmentText
+                                        .withValues(alpha: 0.6),
                                   ),
                                 ),
                               ),
-                              Expanded(child: Divider(color: Colors.white24)),
+                              const Expanded(
+                                child: Divider(
+                                  color: SysQuestColors.stoneHighlight,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 14),
@@ -235,20 +262,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  TextButton(
-                    onPressed: auth.cargando
-                        ? null
-                        : () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const RegistroScreen(),
-                            ),
-                          ),
-                    child: const Text('Crear cuenta'),
-                  ),
-                ],
+                    const SizedBox(height: 18),
+                    TextButton(
+                      onPressed: auth.cargando
+                          ? null
+                          : () => Navigator.push(
+                                context,
+                                buildRetroRoute(const RegistroScreen()),
+                              ),
+                      child: Text(
+                        '¿NO TIENES CUENTA? REGÍSTRATE',
+                        style: SysQuestTypography.caption.copyWith(
+                          color: SysQuestColors.manaCyan,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -266,31 +297,33 @@ class _SysQuestLogo extends StatelessWidget {
     return Column(
       children: [
         Container(
-          width: 76,
-          height: 76,
+          width: 64,
+          height: 64,
           decoration: BoxDecoration(
-            color: AppTheme.superficieElevada,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppTheme.doradoCritico, width: 2),
-            boxShadow: [
+            color: SysQuestColors.stonePanel,
+            border: Border.all(color: SysQuestColors.borderBlack, width: 3),
+            boxShadow: const [
               BoxShadow(
-                color: AppTheme.doradoCritico.withValues(alpha: 0.2),
-                blurRadius: 20,
+                color: SysQuestColors.shadowBlack,
+                offset: Offset(0, 4),
               ),
             ],
           ),
-          child: const Icon(
-            Icons.auto_awesome,
-            color: AppTheme.doradoCritico,
-            size: 42,
+          child: const Center(
+            child: Icon(
+              Icons.auto_awesome,
+              color: SysQuestColors.gold,
+              size: 36,
+            ),
           ),
         ),
         const SizedBox(height: 12),
         Text(
           'SYSQUEST',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(letterSpacing: 2),
+          style: SysQuestTypography.h1.copyWith(
+            color: SysQuestColors.gold,
+            letterSpacing: 3.0,
+          ),
         ),
       ],
     );
@@ -304,21 +337,24 @@ class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppTheme.rojoDanio.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.rojoDanio.withValues(alpha: 0.55)),
+        color: SysQuestColors.lifeRed.withValues(alpha: 0.15),
+        border: Border.all(color: SysQuestColors.lifeRed, width: 2),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline, color: AppTheme.rojoDanio),
-          const SizedBox(width: 10),
+          const Icon(Icons.error_outline,
+              color: SysQuestColors.lifeRed, size: 18),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               mensaje,
-              style: const TextStyle(color: AppTheme.azulTexto),
+              style: SysQuestTypography.caption.copyWith(
+                color: SysQuestColors.parchmentText,
+                fontSize: 8,
+              ),
             ),
           ),
         ],
@@ -344,25 +380,22 @@ class _BotonOAuth extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E2230),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.5)),
+          color: SysQuestColors.dungeonVoid,
+          border: Border.all(color: color, width: 2),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icono, color: color, size: 20),
-            const SizedBox(width: 6),
+            Icon(icono, color: color, size: 18),
+            const SizedBox(width: 4),
             Text(
               label,
-              style: TextStyle(
+              style: SysQuestTypography.caption.copyWith(
                 color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+                fontSize: 8,
               ),
             ),
           ],
@@ -371,4 +404,3 @@ class _BotonOAuth extends StatelessWidget {
     );
   }
 }
-

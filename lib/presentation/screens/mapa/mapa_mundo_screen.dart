@@ -253,7 +253,7 @@ class _NodoWidget extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(0.4),
+                  color: color.withValues(alpha: 0.4),
                   blurRadius: 10,
                   spreadRadius: 2,
                 )
@@ -296,7 +296,7 @@ class _CaminoMundoPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final dashPaint = Paint()
-      ..color = AppTheme.doradoCritico.withOpacity(0.6)
+      ..color = AppTheme.doradoCritico.withValues(alpha: 0.6)
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
 
