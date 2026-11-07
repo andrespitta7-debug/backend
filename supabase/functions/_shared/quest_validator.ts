@@ -14,12 +14,14 @@ export interface EncuentroIa {
   vida_enemigo?: number;
   concepto?: string;
   pregunta: string;
+  semantic_hint?: string;
   codigo: string | null;
   opciones: OpcionIa[];
 }
 
 export interface QuestIa {
   titulo: string;
+  tema?: string;
   descripcion: string;
   encuentros: EncuentroIa[];
 }
@@ -99,6 +101,9 @@ export function validarQuestJson(
     if (typeof enc.pregunta !== 'string' || enc.pregunta.trim() === '') {
       return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} pregunta faltante o vacia` };
     }
+    if (enc.semantic_hint !== undefined && enc.semantic_hint !== null && typeof enc.semantic_hint !== 'string') {
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} semantic_hint invalido` };
+    }
     if (enc.codigo !== null && typeof enc.codigo !== 'string') {
       return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `encuentro ${i} codigo invalido` };
     }
@@ -144,6 +149,10 @@ export function validarQuestJson(
     if (enc.pregunta.length < 10 || enc.pregunta.length > 400) {
       console.error('[validarQuestJson] pregunta fuera de rango (10-400):', enc.pregunta?.length, enc.pregunta);
       return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `pregunta longitud ${enc.pregunta?.length} fuera de rango 10-400` };
+    }
+    if (typeof enc.semantic_hint === 'string' && enc.semantic_hint.length > 150) {
+      console.error('[validarQuestJson] semantic_hint fuera de rango (>150):', enc.semantic_hint.length);
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `semantic_hint longitud ${enc.semantic_hint.length} > 150` };
     }
     if (typeof enc.codigo === 'string' && enc.codigo.length > 600) {
       console.error('[validarQuestJson] codigo fuera de rango (>600):', enc.codigo.length);
@@ -226,7 +235,8 @@ export function validarQuestJson(
   for (const enc of data.encuentros) {
     if (
       REGEX_HIGIENE.test(enc.enemigo) ||
-      REGEX_HIGIENE.test(enc.pregunta)
+      REGEX_HIGIENE.test(enc.pregunta) ||
+      (typeof enc.semantic_hint === 'string' && REGEX_HIGIENE.test(enc.semantic_hint))
     ) {
       return { valido: false, codigo: 'IA_CONTENIDO_INVALIDO' };
     }

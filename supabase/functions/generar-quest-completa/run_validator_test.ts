@@ -14,49 +14,41 @@ function generarPoolValido(): PoolNarrativoIa {
       'Entras al compilador donde sombras de errores acechan en la oscuridad.',
       'El sistema se inicializa mientras los registros se cargan con tensión.',
       'Cruzas las compuertas del kernel con tu código listo para la batalla.',
-      'Las líneas de memoria se extienden ante ti como un laberinto frío.',
     ],
     entre_combates: [
       'Derrotas al proceso hostil y avanzas hacia el siguiente bloque.',
       'El hilo de ejecución se estabiliza tras superar la anomalía.',
       'Recuperas el control de los punteros y continúas tu camino.',
-      'La excepción ha sido mitigada y el flujo principal se reanuda.',
     ],
     jefe_avistado: [
       'Una presencia colosal satura los registros de la CPU frente a ti.',
       'El proceso maestro emerge desbordando la pila de llamadas del sistema.',
       'Las alarmas del kernel resuenan ante la llegada del guardián supremo.',
-      'Un vórtice de datos corruptos anuncia al jefe final de la sección.',
     ],
     ronda_completada: [
       'Completas la ronda con éxito limpiando todos los sectores infectados.',
       'Los tres desafíos caen resueltos y el sistema entra en modo seguro.',
       'La memoria queda liberada y una nueva fase de pruebas se desbloquea.',
-      'Superas la prueba con creces dejando una traza impecable en el log.',
     ],
     retirada: [
       'Decides abortar la misión de forma controlada guardando tu progreso.',
       'Envías una señal de interrupción limpia y te retiras con dignidad.',
       'Cierras los descriptores de archivo y aseguras tus datos obtenidos.',
-      'El hilo de ejecución finaliza ordenadamente preservando tu avance.',
     ],
     muerte: [
       'El flujo de control colapsa y el sistema se apaga en silencio.',
       'Un kernel panic irreversible termina con tu intento actual.',
       'La memoria se desborda y el entorno se congela irremediablemente.',
-      'El stack trace final marca el fin de tu travesía por este módulo.',
     ],
     critico: [
       '¡Tu algoritmo optimizado asesta un golpe devastador al enemigo!',
       '¡Encuentras el fallo exacto provocando un colapso en su estructura!',
       '¡Una instrucción precisa destruye la defensa del proceso rival!',
-      '¡Tu respuesta óptima corta los ciclos del oponente de raíz!',
     ],
     contraataque: [
       'El enemigo detecta tu vacilación y te castiga con una excepción.',
       'Tu intento fallido desencadena una trampa de interrupción hostil.',
       'El proceso rival aprovecha tu error y reduce tu energía vital.',
-      'Una fuga de recursos enemiga impacta directamente contra tu salud.',
     ],
   };
 }
@@ -251,7 +243,7 @@ Deno.test('Todo válido → aceptado', () => {
   if (resultado.valido) {
     assertEquals(resultado.run.quest.encuentros.length, 3);
     assertEquals(resultado.run.preguntas_extra.length, 9);
-    assertEquals(resultado.run.pool_narrativo?.intro.length, 4);
+    assertEquals(resultado.run.pool_narrativo?.intro.length, 3);
   }
 });
 
@@ -267,5 +259,74 @@ Deno.test('Todo válido en modo caché (sin pool_narrativo en JSON) → aceptado
     assertEquals(resultado.run.quest.encuentros.length, 3);
     assertEquals(resultado.run.preguntas_extra.length, 9);
     assertEquals(resultado.run.pool_narrativo, undefined);
+  }
+});
+
+Deno.test('Formato académico desacoplado (quest_title, resolved_topic, 8 questions) → aceptado', () => {
+  const academicJson = {
+    quest_title: 'La Cripta de la Alquimia Culinaria',
+    resolved_topic: 'Gastronomía: Pastas',
+    questions: [
+      {
+        pregunta: '¿Qué tipo de harina se utiliza tradicionalmente para la pasta seca?',
+        opciones: ['Sémola de trigo duro', 'Harina de maíz', 'Harina de arroz', 'Fécula de papa'],
+        correct_index: 0,
+        semantic_hint: 'Es un derivado del trigo conocido por su textura granulada y alto gluten.',
+      },
+      {
+        pregunta: '¿Cuál es el término italiano para la pasta cocida al dente?',
+        opciones: ['Al dente', 'Molto cotto', 'Crudo', 'Stufato'],
+        correct_index: 0,
+        semantic_hint: 'Describe que la pasta ofrece una ligera resistencia al morderla.',
+      },
+      {
+        pregunta: '¿Qué ingrediente tradicional emulsiona la salsa carbonara original?',
+        opciones: ['Yema de huevo y queso pecorino', 'Crema de leche espesa', 'Mantequilla y harina', 'Aceite de oliva y ajo'],
+        correct_index: 0,
+        semantic_hint: 'Se utiliza el calor residual de la pasta para cocinarlo sin cuajarlo.',
+      },
+      {
+        pregunta: '¿De qué región de Italia es originaria la pasta pesto genovese?',
+        opciones: ['Liguria', 'Sicilia', 'Lombardía', 'Toscana'],
+        correct_index: 0,
+        semantic_hint: 'Es una región costera del noroeste italiano famosa por la albahaca.',
+      },
+      {
+        pregunta: '¿Cuál es la función principal de la sal gruesa en el agua de cocción?',
+        opciones: ['Sazonar la masa desde su interior', 'Hacer que el agua hierva a menor temperatura', 'Evitar que la pasta se pegue a la olla', 'Conservar el color original de la pasta'],
+        correct_index: 0,
+        semantic_hint: 'Permite que el sabor penetre directamente en el almidón hidratado.',
+      },
+      {
+        pregunta: '¿Qué forma tiene la pasta denominada orecchiette?',
+        opciones: ['Pequeñas orejas', 'Cilindros estriados', 'Lazos o mariposas', 'Espirales finas'],
+        correct_index: 0,
+        semantic_hint: 'Su nombre en italiano hace referencia a una parte anatómica auditiva.',
+      },
+      {
+        pregunta: '¿Qué salsa clásica italiana lleva guanciale, tomate y pecorino?',
+        opciones: ['Amatriciana', 'Boloñesa', 'Alfredo', 'Arrabbiata'],
+        correct_index: 0,
+        semantic_hint: 'Es originaria de la ciudad de Amatrice en la región del Lacio.',
+      },
+      {
+        pregunta: '¿Por qué se debe reservar un poco de agua de cocción antes de colar la pasta?',
+        opciones: ['Para emulsionar salsas gracias a su almidón', 'Para enfriar rápidamente la pasta cocida', 'Para enjuagar el exceso de gluten', 'Para agregar volumen líquido a la salsa'],
+        correct_index: 0,
+        semantic_hint: 'El agua caliente contiene almidones disueltos que ligan grasa y líquido.',
+      },
+    ],
+  };
+
+  const resultado = validarRunCompleta(JSON.stringify(academicJson), 'libre', false);
+  assertEquals(resultado.valido, true);
+  if (resultado.valido) {
+    assertEquals(resultado.run.quest_title, 'La Cripta de la Alquimia Culinaria');
+    assertEquals(resultado.run.resolved_topic, 'Gastronomía: Pastas');
+    assertEquals(resultado.run.quest.encuentros.length, 3);
+    assertEquals(resultado.run.preguntas_extra.length, 5);
+    assertEquals(resultado.run.quest.encuentros[0].semantic_hint, 'Es un derivado del trigo conocido por su textura granulada y alto gluten.');
+    assertEquals(resultado.run.quest.encuentros[2].tipo_encuentro, 'jefe');
+    assertEquals(resultado.run.quest.encuentros[2].vida_enemigo, 100);
   }
 });

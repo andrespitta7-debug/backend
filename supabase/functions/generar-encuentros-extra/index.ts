@@ -222,6 +222,7 @@ Deno.serve(async (req: Request) => {
       enemigo: encuentro.enemigo,
       pregunta: encuentro.pregunta,
       codigo: encuentro.codigo ?? null,
+      semantic_hint: encuentro.semantic_hint ?? null,
       opciones: opcionesBarajadas,
     };
   });

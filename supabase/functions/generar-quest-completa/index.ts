@@ -9,7 +9,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsPreflightResponse, jsonResponse } from '../_shared/response.ts';
 import { obtenerProveedor } from '../_shared/ai/ai_factory.ts';
-import { MEGA_JSON_SCHEMA, RUN_SIN_POOL_SCHEMA } from '../_shared/run_schema.ts';
+import { ACADEMIC_QUEST_SCHEMA } from '../_shared/run_schema.ts';
 import { validarRunCompleta } from '../_shared/run_validator.ts';
 import {
   SYSTEM_PROMPT_NARRATIVA,
@@ -177,32 +177,9 @@ Deno.serve(async (req: Request) => {
   const categoria = body.categoria;
   const dificultad = body.dificultad;
 
-  // 6. Consultar si existe pool narrativo en caché
-  let poolEnMemoria: unknown = null;
-  let fuentePool: 'AI' | 'CACHE' = 'AI';
-
-  const { data: cacheData, error: cacheErr } = await supabaseAdmin
-    .from('pool_narrativo_cache')
-    .select('id, pool, usos')
-    .eq('tema', temaLimpio)
-    .eq('categoria', categoria)
-    .eq('dificultad', dificultad)
-    .maybeSingle();
-
-  if (!cacheErr && cacheData?.pool) {
-    poolEnMemoria = cacheData.pool;
-    fuentePool = 'CACHE';
-    // Incrementar contador de usos de la caché en segundo plano
-    supabaseAdmin
-      .from('pool_narrativo_cache')
-      .update({ usos: (cacheData.usos ?? 0) + 1 })
-      .eq('id', cacheData.id)
-      .then();
-  }
-
-  const conPool = poolEnMemoria === null;
-  const schema = conPool ? MEGA_JSON_SCHEMA : RUN_SIN_POOL_SCHEMA;
-  const userPrompt = construirUserPromptRun(temaLimpio, categoria, dificultad, conPool);
+  // 6. Configurar esquema académico desacoplado y prompt
+  const schema = ACADEMIC_QUEST_SCHEMA;
+  const userPrompt = construirUserPromptRun(temaLimpio, categoria, dificultad);
 
   // 7. Llamar al proveedor de IA con medición de latencia
   const proveedor = obtenerProveedor();
@@ -257,11 +234,10 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // 9. Validar respuesta (V0-V9 para quest, N0-N3 para pool narrativo si aplica, E0-E2 para preguntas extra)
+  // 9. Validar respuesta con el esquema académico
   const resultadoValidacion = validarRunCompleta(
     resultadoIa.texto,
-    categoria,
-    conPool
+    categoria
   );
 
   if (!resultadoValidacion.valido) {
@@ -279,7 +255,8 @@ Deno.serve(async (req: Request) => {
 
   const runIa = resultadoValidacion.run;
   const questIa = runIa.quest;
-  const poolFinal = conPool ? runIa.pool_narrativo : poolEnMemoria;
+  const questTitle = runIa.quest_title ?? questIa.titulo;
+  const resolvedTopic = runIa.resolved_topic ?? questIa.tema ?? temaLimpio;
   const preguntasExtraIa = runIa.preguntas_extra;
 
 // Red de seguridad: garantiza vida balanceada aunque la IA falle.
@@ -322,6 +299,7 @@ function normalizarVidaEnemigos(encuentros: any[]): void {
       enemigo: encuentro.enemigo,
       pregunta: encuentro.pregunta,
       codigo: encuentro.codigo ?? null,
+      semantic_hint: encuentro.semantic_hint ?? null,
       opciones: opcionesBarajadas,
     };
   });
@@ -346,6 +324,7 @@ function normalizarVidaEnemigos(encuentros: any[]): void {
       enemigo: encuentro.enemigo,
       pregunta: encuentro.pregunta,
       codigo: encuentro.codigo ?? null,
+      semantic_hint: encuentro.semantic_hint ?? null,
       opciones: opcionesBarajadas,
     };
   });
@@ -361,8 +340,10 @@ function normalizarVidaEnemigos(encuentros: any[]): void {
 
   // 13. Invocar RPC transaccional crear_run_completa
   const questParaRpc = {
-    titulo: questIa.titulo,
-    tema: temaLimpio,
+    titulo: questTitle,
+    tema: resolvedTopic,
+    quest_title: questTitle,
+    resolved_topic: resolvedTopic,
     categoria,
     dificultad,
     descripcion: questIa.descripcion,
@@ -374,7 +355,7 @@ function normalizarVidaEnemigos(encuentros: any[]): void {
     'crear_run_completa',
     {
       p_quest: questParaRpc,
-      p_pool_narrativo: poolFinal,
+      p_pool_narrativo: {},
       p_preguntas_extra: preguntasExtraParaRpc,
       p_semilla: semilla,
       p_id_usuario: userId,
@@ -395,24 +376,7 @@ function normalizarVidaEnemigos(encuentros: any[]): void {
   const idQuest = rpcData.id_quest as string;
   const idPartida = rpcData.id_partida as string;
 
-  // 14. Guardar en caché si el pool fue generado con IA
-  if (conPool && poolFinal) {
-    supabaseAdmin
-      .from('pool_narrativo_cache')
-      .upsert(
-        {
-          tema: temaLimpio,
-          categoria,
-          dificultad,
-          pool: poolFinal,
-          usos: 1,
-        },
-        { onConflict: 'tema,categoria,dificultad' }
-      )
-      .then();
-  }
-
-  // 15. Consultar los UUIDs asignados en base de datos para encuentros y opciones
+  // 14. Consultar los UUIDs asignados en base de datos para encuentros y opciones
   const { data: encuentrosDb } = await supabaseAdmin
     .from('encuentro')
     .select(`
@@ -442,7 +406,9 @@ function normalizarVidaEnemigos(encuentros: any[]): void {
   const questRespuesta = {
     id: idQuest,
     titulo: questParaRpc.titulo,
+    quest_title: questParaRpc.titulo,
     tema: questParaRpc.tema,
+    resolved_topic: questParaRpc.tema,
     categoria: questParaRpc.categoria,
     dificultad: questParaRpc.dificultad,
     descripcion: questParaRpc.descripcion,
@@ -458,6 +424,7 @@ function normalizarVidaEnemigos(encuentros: any[]): void {
       enemigo: enc.enemigo,
       pregunta: enc.pregunta,
       codigo: enc.codigo,
+      semantic_hint: enc.semantic_hint ?? null,
       opciones: enc.opciones.map((op) => ({
         id: opcionIdMap.get(`${enc.numero}_${op.letra}`) ?? null,
         letra: op.letra,
@@ -478,6 +445,7 @@ function normalizarVidaEnemigos(encuentros: any[]): void {
     enemigo: enc.enemigo,
     pregunta: enc.pregunta,
     codigo: enc.codigo,
+    semantic_hint: enc.semantic_hint ?? null,
     opciones: enc.opciones.map((op) => ({
       id: opcionIdMap.get(`${enc.numero}_${op.letra}`) ?? null,
       letra: op.letra,
@@ -490,12 +458,14 @@ function normalizarVidaEnemigos(encuentros: any[]): void {
   return jsonResponse(
     {
       ok: true,
-      fuente: fuentePool,
-      proveedor_ia: fuentePool === 'CACHE' ? 'cache' : resultadoIa.proveedor,
+      quest_title: questParaRpc.titulo,
+      resolved_topic: questParaRpc.tema,
+      fuente: 'AI',
+      proveedor_ia: resultadoIa.proveedor,
       id_partida: idPartida,
       semilla,
       quest: questRespuesta,
-      pool_narrativo: poolFinal,
+      pool_narrativo: {},
       preguntas_extra: preguntasExtraRespuesta,
     },
     201

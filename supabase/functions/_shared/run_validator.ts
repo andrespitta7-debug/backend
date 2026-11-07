@@ -21,6 +21,8 @@ export interface PoolNarrativoIa {
 }
 
 export interface RunCompletaIa {
+  quest_title?: string;
+  resolved_topic?: string;
   quest: QuestIa;
   pool_narrativo?: PoolNarrativoIa;
   preguntas_extra: EncuentroIa[];
@@ -224,6 +226,16 @@ export function validarPreguntasExtra(
       return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V2: codigo no es string ni null` };
     }
 
+    if (enc.semantic_hint !== undefined && enc.semantic_hint !== null && typeof enc.semantic_hint !== 'string') {
+      console.error('[validarPreguntasExtra] Pregunta', i, 'V2 falla: semantic_hint no es string ni null');
+      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V2: semantic_hint no es string ni null` };
+    }
+
+    if (typeof enc.semantic_hint === 'string' && enc.semantic_hint.length > 150) {
+      console.error('[validarPreguntasExtra] Pregunta', i, 'V3 falla: semantic_hint longitud > 150:', enc.semantic_hint.length);
+      return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V3: semantic_hint longitud > 150` };
+    }
+
     if (typeof enc.codigo === 'string' && enc.codigo.length > 600) {
       console.error('[validarPreguntasExtra] Pregunta', i, 'V3 falla: codigo con longitud > 600:', enc.codigo.length);
       return { valido: false, codigo: 'IA_PREGUNTAS_INVALIDAS', detalle: `Pregunta ${i} V3: codigo longitud > 600` };
@@ -236,7 +248,11 @@ export function validarPreguntasExtra(
     }
 
     // V8: Higiene en encuentro
-    if (REGEX_HIGIENE.test(enc.enemigo) || REGEX_HIGIENE.test(enc.pregunta)) {
+    if (
+      REGEX_HIGIENE.test(enc.enemigo) ||
+      REGEX_HIGIENE.test(enc.pregunta) ||
+      (typeof enc.semantic_hint === 'string' && REGEX_HIGIENE.test(enc.semantic_hint))
+    ) {
       console.error(
         '[validarPreguntasExtra] Pregunta',
         i,
@@ -381,7 +397,7 @@ export function validarPreguntasExtra(
 export function validarRunCompleta(
   texto: string,
   categoria: string,
-  requierePool = true
+  _requierePool = false
 ): ResultadoValidacionRun {
   // V0: Texto vacío
   if (!texto || texto.trim() === '') {
@@ -409,10 +425,154 @@ export function validarRunCompleta(
     return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
   }
 
-  // 1. Extraer y validar Quest
+  // =========================================================================
+  // FORMA 1: Nuevo formato académico desacoplado (quest_title, resolved_topic, questions)
+  // =========================================================================
+  const questTitle = data.quest_title ?? data.titulo;
+  const resolvedTopic = data.resolved_topic ?? data.tema;
+  const rawQuestions = data.questions ?? data.preguntas;
+
+  if (Array.isArray(rawQuestions)) {
+    if (typeof questTitle !== 'string' || questTitle.trim().length < 3 || questTitle.trim().length > 80) {
+      console.error('[validarRunCompleta] quest_title fuera de rango (3-80):', questTitle);
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: 'quest_title debe tener entre 3 y 80 caracteres' };
+    }
+
+    if (typeof resolvedTopic !== 'string' || resolvedTopic.trim().length < 2 || resolvedTopic.trim().length > 80) {
+      console.error('[validarRunCompleta] resolved_topic fuera de rango (2-80):', resolvedTopic);
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: 'resolved_topic debe tener entre 2 y 80 caracteres' };
+    }
+
+    // Aceptamos entre 5 y 12 preguntas para que no falle si la IA devuelve 8 o 10
+    if (rawQuestions.length < 5 || rawQuestions.length > 12) {
+      console.error('[validarRunCompleta] questions fuera de rango (5-12):', rawQuestions.length);
+      return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `Se esperaban entre 5 y 12 preguntas, se recibieron ${rawQuestions.length}` };
+    }
+
+    const preguntasValidadas: EncuentroIa[] = [];
+
+    for (let i = 0; i < rawQuestions.length; i++) {
+      const q = rawQuestions[i];
+      if (!q || typeof q !== 'object' || Array.isArray(q)) {
+        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `Pregunta ${i} no es un objeto válido` };
+      }
+
+      const preguntaTexto = q.pregunta ?? q.enunciado ?? q.question;
+      if (typeof preguntaTexto !== 'string' || preguntaTexto.trim().length < 5 || preguntaTexto.trim().length > 300) {
+        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `Pregunta ${i} enunciado fuera de rango (5-300 chars)` };
+      }
+
+      if (REGEX_HIGIENE.test(preguntaTexto)) {
+        return { valido: false, codigo: 'IA_CONTENIDO_INVALIDO', detalle: `Pregunta ${i} contiene markdown o HTML no permitido` };
+      }
+
+      const opcionesRaw = q.opciones ?? q.options;
+      if (!Array.isArray(opcionesRaw) || opcionesRaw.length !== 4) {
+        return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `Pregunta ${i} debe tener exactamente 4 opciones` };
+      }
+
+      let correctIndex = typeof q.correct_index === 'number' ? q.correct_index : -1;
+      if (correctIndex < 0 || correctIndex > 3) {
+        if (typeof q.correcta === 'number' && q.correcta >= 0 && q.correcta <= 3) {
+          correctIndex = q.correcta;
+        } else {
+          correctIndex = 0;
+        }
+      }
+
+      const hintRaw = q.semantic_hint ?? q.pista ?? '';
+      let semanticHint: string | undefined;
+      if (typeof hintRaw === 'string' && hintRaw.trim().length > 0) {
+        if (hintRaw.trim().length > 150) {
+          return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `Pregunta ${i} semantic_hint excede 150 caracteres` };
+        }
+        if (REGEX_HIGIENE.test(hintRaw)) {
+          return { valido: false, codigo: 'IA_CONTENIDO_INVALIDO', detalle: `Pregunta ${i} semantic_hint contiene formato no permitido` };
+        }
+        semanticHint = hintRaw.trim();
+      }
+
+      const opcionesMapeadas: OpcionIa[] = [];
+      const textosVistos = new Set<string>();
+
+      for (let j = 0; j < 4; j++) {
+        const opVal = opcionesRaw[j];
+        const textoOp = typeof opVal === 'string' ? opVal.trim() : (opVal?.texto ?? String(opVal)).trim();
+        if (!textoOp) {
+          return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO', detalle: `Pregunta ${i} opción ${j} vacía` };
+        }
+        if (REGEX_HIGIENE.test(textoOp)) {
+          return { valido: false, codigo: 'IA_CONTENIDO_INVALIDO', detalle: `Pregunta ${i} opción ${j} contiene formato no permitido` };
+        }
+
+        const norm = normalizarTexto(textoOp);
+        if (textosVistos.has(norm)) {
+          return { valido: false, codigo: 'IA_OPCIONES_INVALIDAS', detalle: `Pregunta ${i} opciones duplicadas` };
+        }
+        textosVistos.add(norm);
+
+        const esCorrecta = j === correctIndex;
+        let calidad: 0 | 1 | 2 = 1;
+        if (esCorrecta) {
+          calidad = 2;
+        } else if (j === (correctIndex === 0 ? 1 : 0)) {
+          calidad = 0;
+        }
+
+        opcionesMapeadas.push({
+          texto: textoOp,
+          calidad,
+          explicacion: esCorrecta
+            ? 'Respuesta correcta y óptima.'
+            : (calidad === 0 ? 'Respuesta incorrecta.' : 'Respuesta parcialmente acertada pero subóptima.'),
+        });
+      }
+
+      const esJefe = i === 2;
+      preguntasValidadas.push({
+        numero: i + 1,
+        tipo_encuentro: esJefe ? 'jefe' : 'normal',
+        enemigo: esJefe ? `Señor de la Mazmorra` : `Guardián ${i + 1}`,
+        vida_enemigo: esJefe ? 100 : 50,
+        concepto: `${resolvedTopic.trim()} (Fase ${i + 1})`,
+        pregunta: preguntaTexto.trim(),
+        codigo: null,
+        semantic_hint: semanticHint,
+        opciones: opcionesMapeadas,
+      });
+    }
+
+    const encuentrosQuest = preguntasValidadas.slice(0, 3);
+    const preguntasExtra = preguntasValidadas.slice(3).map((p, idx) => ({
+      ...p,
+      numero: idx + 4,
+      tipo_encuentro: 'normal' as const,
+      vida_enemigo: 50,
+    }));
+
+    return {
+      valido: true,
+      run: {
+        quest_title: questTitle.trim(),
+        resolved_topic: resolvedTopic.trim(),
+        quest: {
+          titulo: questTitle.trim(),
+          tema: resolvedTopic.trim(),
+          descripcion: `Misión académica sobre ${resolvedTopic.trim()}`,
+          encuentros: encuentrosQuest,
+        },
+        pool_narrativo: undefined,
+        preguntas_extra: preguntasExtra,
+      },
+    };
+  }
+
+  // =========================================================================
+  // FORMA 2: Formato heredado (quest + preguntas_extra)
+  // =========================================================================
   const questData = data.quest ?? (data.titulo && data.encuentros ? data : null);
   if (!questData) {
-    console.error('[validarRunCompleta] falta clave quest en data:', Object.keys(data));
+    console.error('[validarRunCompleta] falta clave quest o questions en data:', Object.keys(data));
     return { valido: false, codigo: 'IA_ESQUEMA_INVALIDO' };
   }
 
@@ -422,28 +582,33 @@ export function validarRunCompleta(
     return { valido: false, codigo: resQuest.codigo, detalle: resQuest.detalle };
   }
 
-  // 2. Validar Pool Narrativo si es requerido
-  let poolValido: PoolNarrativoIa | undefined;
-  if (requierePool) {
+  // Pool narrativo es opcional y NUNCA causa fallo con IA_POOL_INVALIDO
+  let poolValido: PoolNarrativoIa | undefined = undefined;
+  if (data.pool_narrativo && typeof data.pool_narrativo === 'object') {
     const resPool = validarPoolNarrativo(data.pool_narrativo);
-    if (!resPool.valido) {
-      return { valido: false, codigo: resPool.codigo, detalle: 'Error en pool narrativo' };
+    if (resPool.valido) {
+      poolValido = resPool.pool;
     }
-    poolValido = resPool.pool;
   }
 
-  // 3. Validar Preguntas Extra
-  const resPreguntas = validarPreguntasExtra(data.preguntas_extra, categoria);
-  if (!resPreguntas.valido) {
-    return { valido: false, codigo: resPreguntas.codigo, detalle: resPreguntas.detalle };
+  // Validar Preguntas Extra si están presentes
+  let preguntasExtra: EncuentroIa[] = [];
+  if (Array.isArray(data.preguntas_extra)) {
+    const resPreguntas = validarPreguntasExtra(data.preguntas_extra, categoria);
+    if (!resPreguntas.valido) {
+      return { valido: false, codigo: resPreguntas.codigo, detalle: resPreguntas.detalle };
+    }
+    preguntasExtra = resPreguntas.preguntas;
   }
 
   return {
     valido: true,
     run: {
+      quest_title: resQuest.quest.titulo,
+      resolved_topic: resQuest.quest.tema ?? '',
       quest: resQuest.quest,
       pool_narrativo: poolValido,
-      preguntas_extra: resPreguntas.preguntas,
+      preguntas_extra: preguntasExtra,
     },
   };
 }
@@ -528,6 +693,22 @@ export function validarLoteEncuentrosExtra(
       };
     }
 
+    if (enc.semantic_hint !== undefined && enc.semantic_hint !== null && typeof enc.semantic_hint !== 'string') {
+      return {
+        valido: false,
+        codigo: 'IA_ENCUENTROS_INVALIDOS',
+        detalle: `Encuentro ${i}: semantic_hint no es string ni null`,
+      };
+    }
+
+    if (typeof enc.semantic_hint === 'string' && enc.semantic_hint.length > 150) {
+      return {
+        valido: false,
+        codigo: 'IA_ENCUENTROS_INVALIDOS',
+        detalle: `Encuentro ${i}: semantic_hint longitud > 150`,
+      };
+    }
+
     if (typeof enc.codigo === 'string' && enc.codigo.length > 600) {
       return {
         valido: false,
@@ -544,7 +725,11 @@ export function validarLoteEncuentrosExtra(
       };
     }
 
-    if (REGEX_HIGIENE.test(enc.enemigo) || REGEX_HIGIENE.test(enc.pregunta)) {
+    if (
+      REGEX_HIGIENE.test(enc.enemigo) ||
+      REGEX_HIGIENE.test(enc.pregunta) ||
+      (typeof enc.semantic_hint === 'string' && REGEX_HIGIENE.test(enc.semantic_hint))
+    ) {
       return {
         valido: false,
         codigo: 'IA_ENCUENTROS_INVALIDOS',

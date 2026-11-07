@@ -79,6 +79,19 @@ diagnostico en validator
   transición automática de enemigos al morir, uso del pool narrativo inmersivo y
   modal de pausa con retiro/continuar.
 - **Fix fallback parámetros combate:** Fallback seguro en `CombateController.cargarQuest` para `temaQuest` ('Aventura General'), `categoriaQuest` ('libre') y `dificultadQuest` ('facil'), evitando errores 400 del backend al solicitar más encuentros en quests predeterminadas/semilla.
+- **Limpieza de interfaz, modales inmersivos y legibilidad de arena:**
+  - Menú principal unificado: eliminación de logout redundante en el header, botón único inferior retro (`SysQuestColors.lifeRed`, `lever_left.png`), sin emojis.
+  - Eventos como modales inmersivos: `_mostrarEventoModal` usando `RetroPanelBox` con `barrierDismissible: false` y fondo oscurecido, eliminando cards inline de decisión y ocultando jerga técnica (`Bioma: ... | Efecto: ...`).
+  - Helper `dungeon_lore_translator.dart` que traduce tags mecánicos (`trap_triggered`, `dungeon_crypt`, `subtle_glitch`, etc.) a nombres inmersivos.
+  - Legibilidad en la arena: `topPadding: topInset + 40`, fuentes mínimas escaladas a 9.5px, cajas y banners con fondo `SysQuestColors.dungeonVoid.withValues(alpha: 0.9)` y borde semántico de 2px.
+  - 179 tests unitarios y de integración pasando (174 previos + 5 nuevos), 0 issues en `dart analyze`.
+- **Física de la arena, caída real, caminata fluida y biomas por sala:**
+  - Caída real del héroe con `TweenAnimationBuilder` (-130px a 0px con curva `bounceOut`) al descender por el agujero en `portalDropIntro`.
+  - Animación fluida de 4 frames: tickers `_idleTicker` y `_runTicker` cacheados en el estado para evitar reinicio a `f0` en cada rebuild.
+  - Espada sincronizada con balanceo del héroe (`_bobCtrl`), anclada al puño y con inclinación dinámica según modo (idle, caminata, ataque). Soporte opcional de `shieldSpriteFile`.
+  - Caminata continua por el corredor (`walkingCorridor`) con scroll fluido de 320px y props dinámicos en movimiento (`column_wall.png`, `crate.png`, estandartes y elementos de pared).
+  - Biomas por sala (`BiomeData.fromIndex(indiceActual)`) con filtros de color modulados (normal, verde pantanoso, rojo jefe, azul arcano), estandartes correspondientes y props de pared (`wall_goo.png`, `wall_fountain_basin_red_anim_f0.png`).
+  - 182 tests unitarios y de integración pasando (179 previos + 3 nuevos), 0 issues en `dart analyze`. Commit frontend `c1f92d2`.
 
 ## En curso
 
@@ -226,3 +239,9 @@ y el docente: `feature/SYSQ-XX` → `dev` → `preprod` → `main`. |
 | 2026-10-13 | Balance de puntos y Resumen de Partida (Bloque 9): formula server-side con desglose (enemigos, racha, victoria) y tarjeta _ResumenPartidaCard al finalizar combate. | Fase 2 - Bloque 9 |
 | 2026-10-13 | Sistema Riesgo/Recompensa Push Your Luck (Bloque 6): altar entre rondas con Descanso Seguro (+25 HP) vs Pacto Temerario (-10 HP, +30% dano, +5 riesgo, +200 pts/ronda validado en servidor). 136 tests pasando. | Fase 2 - Bloque 6 |
 | 2026-10-14 | Eventos con decision entre combates (Bloque 7): arquetipos interactivos Codice Arcano y Mercader del Abismo en encuentros intermedios, integrados con HP, score, comodines y consola narrativa (137 tests pasando). Fase 2 Gameplay completada. | Fase 2 - Bloque 7 |
+| 2026-10-29 | Backend: Soporte para pista semántica (`semantic_hint`). Actualizados schemas, validadores, prompts y persistencia RPC (`crear_run_completa`, `insertar_encuentros_extra`, `crear_quest_completa`, `obtener_quest_completa`). Migración `20261029123000_add_semantic_hint` aplicada y Edge Functions desplegadas. 17 tests Deno pasando. | Backend - Pistas Semánticas |
+| 2026-10-29 | Backend: Desacoplamiento de narrativa de fantasía en IA. Groq genera únicamente `quest_title`, `resolved_topic` y `questions` académicas directas (`ACADEMIC_QUEST_SCHEMA`). La narrativa de mazmorra se delega al cliente. Migración `20261029134500_decouple_narrative_and_academic_quest` aplicada, Edge Functions desplegadas y 18 tests Deno pasando. | Backend - Desacoplamiento Narrativo |
+| 2026-10-29 | Física de la arena, caída real con rebote, animación de 4 frames sin reinicio de ticker, espada sincronizada con el balanceo, caminata continua con props y biomas dinámicos por sala (182 tests pasando). Commit c1f92d2. | Frontend - Arena y Físicas |
+| 2026-10-29 | Pulido UI móvil: eliminación total de `Icons.auto_awesome` y `Icons.stars` en favor de sprites pixel art (`weapon_golden_sword.png`, `chest_full_open_anim_f0.png`, `coin_anim_f0.png`), eliminación del modal intermedio Material Design al iniciar combate con entrada inmediata a la arena, contenedor oscuro retro para saludo en Main Hub con 2 tarjetas imponentes anchas ('Nueva quest con IA' y 'Mapa de aventura'), retiro con botón retro 'VOLVER AL HUB' y visualización de resumen en pausa. 185 tests pasando. | Frontend - Pulido UI Móvil |
+| 2026-10-29 | Arena fija sin tapar: franja superior `BattleStage` (160px) visible en todo momento. Panel inferior dedicado para selección de Perks, Eventos y Fin de Ronda sin modales superpuestos oscuros. Corrección de bug '¡TRAMPA ARCANA ACTIVADA!' priorizando `evento.titulo` y sprites temáticos. Botones 'Omitir mejora' e 'Ignorar y continuar'. Caminata continua en `ArenaPhase.walkingCorridor` y entrada deslizante suave del nuevo enemigo (`TweenAnimationBuilder` X: 80 -> 0 px). 185 tests pasando. | Frontend - Arena Fija & Transiciones |
+| 2026-10-29 | Fondos dinámicos retro (`ScenePreset`): 4 escenarios pixel art únicos en `DungeonMenuBackdrop` (loginGate, guildHall, arcaneCodex, heroArmory) con tonos modulados, portales completos, estandartes temáticos, fuentes, columnas, pociones, cofres y aventureros. Transición animada cross-fade en `MainHubScreen` y soporte en `LoginScreen`, `ProgresoScreen` y `PerfilScreen`. 186 tests pasando. | Frontend - Fondos y Escenarios Retro |

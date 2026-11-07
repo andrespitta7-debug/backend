@@ -47,6 +47,11 @@ export const QUEST_JSON_SCHEMA = {
             type: 'string',
             description: 'Pregunta o desafío técnico del encuentro (10 a 400 caracteres)',
           },
+          semantic_hint: {
+            type: 'string',
+            maxLength: 150,
+            description: 'Una pista conceptual que ayude a resolver la pregunta sin revelar la respuesta exacta.',
+          },
           codigo: {
             type: ['string', 'null'],
             description: 'Fragmento de código opcional (máx. 600 caracteres) o null si no aplica',

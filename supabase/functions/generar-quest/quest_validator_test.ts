@@ -80,3 +80,56 @@ Deno.test('validarQuestJson: opcion correcta 2x mas larga es rechazada con IA_OP
     assertEquals(resultado.codigo, 'IA_OPCIONES_DESBALANCEADAS');
   }
 });
+
+Deno.test('validarQuestJson: semantic_hint válido es aceptado', () => {
+  const questConHint = {
+    ...questBalanceada,
+    encuentros: questBalanceada.encuentros.map((e) => ({
+      ...e,
+      semantic_hint: 'Recuerda cómo se gestionan los punteros en memoria.',
+    })),
+  };
+  const resultado = validarQuestJson(JSON.stringify(questConHint), 'debug');
+  assertEquals(resultado.valido, true);
+  if (resultado.valido) {
+    assertEquals(resultado.quest.encuentros[0].semantic_hint, 'Recuerda cómo se gestionan los punteros en memoria.');
+  }
+});
+
+Deno.test('validarQuestJson: semantic_hint > 150 caracteres es rechazado con IA_ESQUEMA_INVALIDO', () => {
+  const questHintLargo = {
+    ...questBalanceada,
+    encuentros: [
+      {
+        ...questBalanceada.encuentros[0],
+        semantic_hint: 'A'.repeat(151),
+      },
+      questBalanceada.encuentros[1],
+      questBalanceada.encuentros[2],
+    ],
+  };
+  const resultado = validarQuestJson(JSON.stringify(questHintLargo), 'debug');
+  assertEquals(resultado.valido, false);
+  if (!resultado.valido) {
+    assertEquals(resultado.codigo, 'IA_ESQUEMA_INVALIDO');
+  }
+});
+
+Deno.test('validarQuestJson: semantic_hint con HTML es rechazado con IA_CONTENIDO_INVALIDO', () => {
+  const questHintHtml = {
+    ...questBalanceada,
+    encuentros: [
+      {
+        ...questBalanceada.encuentros[0],
+        semantic_hint: 'Pista con <b>HTML no permitido</b>',
+      },
+      questBalanceada.encuentros[1],
+      questBalanceada.encuentros[2],
+    ],
+  };
+  const resultado = validarQuestJson(JSON.stringify(questHintHtml), 'debug');
+  assertEquals(resultado.valido, false);
+  if (!resultado.valido) {
+    assertEquals(resultado.codigo, 'IA_CONTENIDO_INVALIDO');
+  }
+});

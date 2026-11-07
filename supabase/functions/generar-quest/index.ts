@@ -414,6 +414,7 @@ Devuelve SOLO el objeto JSON, sin texto adicional ni markdown.`;
       enemigo: encuentro.enemigo,
       pregunta: encuentro.pregunta,
       codigo: encuentro.codigo ?? null,
+      semantic_hint: encuentro.semantic_hint ?? null,
       opciones: opcionesBarajadas,
     };
   });
@@ -491,6 +492,7 @@ Devuelve SOLO el objeto JSON, sin texto adicional ni markdown.`;
       enemigo: enc.enemigo,
       pregunta: enc.pregunta,
       codigo: enc.codigo,
+      semantic_hint: enc.semantic_hint ?? null,
       opciones: enc.opciones.map((op) => ({
         id: opcionIdMap.get(`${enc.numero}_${op.letra}`) ?? null,
         letra: op.letra,
